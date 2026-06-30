@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import Providers from '@/components/ui/Providers'
 
 export const metadata: Metadata = {
   title: 'Salvage — What the EVM left behind',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Salvage — What the EVM left behind',
     description: 'Find stranded ERC-20 tokens across Ethereum and Base. Earn a finder\'s fee.',
-    url: 'https://salvagexyz.vercel.app',
+    url: 'https://salvage-olive.vercel.app',
     siteName: 'Salvage',
     type: 'website',
   },
@@ -28,7 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

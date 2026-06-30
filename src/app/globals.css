@@ -498,3 +498,5 @@ body {
   .l-stats-inner { grid-template-columns: 1fr; }
   .d-stats { grid-template-columns: 1fr 1fr; }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }

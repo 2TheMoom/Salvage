@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
+import ConnectButton from '@/components/ui/ConnectButton'
 import { ScanResult, Chain, ScanApiResponse } from '@/types'
 import { isValidAddress } from '@/lib/utils'
 
@@ -10,7 +12,6 @@ const FOUNDER_ADDRESS = (
   process.env.NEXT_PUBLIC_FOUNDER_ADDRESS || ''
 ).toLowerCase()
 
-// Simulated leaderboard data — M3 will pull this from real indexer
 const LEADERBOARD: { addr: string; desc: string; amount: string; status: string }[] = []
 
 type ScanState = 'idle' | 'loading' | 'success' | 'error'
@@ -20,19 +21,22 @@ interface DashboardProps {
   connectedWallet: string | null
 }
 
-export default function Dashboard({ onGoLanding, connectedWallet }: DashboardProps) {
-  const [address, setAddress]   = useState('')
-  const [chain, setChain]       = useState<Chain>('eth')
+export default function Dashboard({ onGoLanding }: DashboardProps) {
+  const { address, isConnected }  = useAccount()
+  const [inputAddr, setInputAddr] = useState('')
+  const [chain, setChain]         = useState<Chain>('eth')
   const [scanState, setScanState] = useState<ScanState>('idle')
-  const [result, setResult]     = useState<ScanResult | null>(null)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [result, setResult]       = useState<ScanResult | null>(null)
+  const [errorMsg, setErrorMsg]   = useState<string | null>(null)
 
-  const isFounder = connectedWallet
-    ? connectedWallet.toLowerCase() === FOUNDER_ADDRESS
+  const isFounder = address
+    ? address.toLowerCase() === FOUNDER_ADDRESS
     : false
 
+  const connectedWallet = isConnected && address ? address : null
+
   const handleScan = useCallback(async () => {
-    if (!isValidAddress(address)) {
+    if (!isValidAddress(inputAddr)) {
       setErrorMsg('Enter a valid 0x contract address.')
       return
     }
@@ -44,7 +48,7 @@ export default function Dashboard({ onGoLanding, connectedWallet }: DashboardPro
       const res  = await fetch('/api/scan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ address, chain }),
+        body:    JSON.stringify({ address: inputAddr, chain }),
       })
       const data: ScanApiResponse = await res.json()
 
@@ -80,17 +84,7 @@ export default function Dashboard({ onGoLanding, connectedWallet }: DashboardPro
           <li><a href="#">Claim Fee</a></li>
         </ul>
         <div className="d-nav-right">
-          {connectedWallet ? (
-            <div className={`wallet-chip ${isFounder ? 'founder' : ''}`}>
-              <span className="w-dot" />
-              <span>
-                {connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}
-              </span>
-              {isFounder && <span style={{ fontSize: '0.7rem', marginLeft: 2 }}>👑</span>}
-            </div>
-          ) : (
-            <button className="btn-connect-d">Connect Wallet</button>
-          )}
+          <ConnectButton variant="dashboard" />
         </div>
       </nav>
 
@@ -148,8 +142,8 @@ export default function Dashboard({ onGoLanding, connectedWallet }: DashboardPro
               <input
                 className="scan-input"
                 placeholder="Paste any ERC-20 contract address…"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
+                value={inputAddr}
+                onChange={e => setInputAddr(e.target.value)}
                 onKeyDown={handleKeyDown}
                 spellCheck={false}
                 autoComplete="off"
@@ -247,7 +241,7 @@ export default function Dashboard({ onGoLanding, connectedWallet }: DashboardPro
                 <div
                   key={i}
                   className="lb-row"
-                  onClick={() => setAddress(row.addr.replace('…', '0000000'))}
+                  onClick={() => setInputAddr(row.addr.replace('…', '0000000'))}
                   title="Click to scan this contract"
                 >
                   <div className="lb-rank">{i + 1}</div>

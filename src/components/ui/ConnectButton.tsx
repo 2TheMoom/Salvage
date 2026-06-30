@@ -1,0 +1,296 @@
+'use client'
+
+import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
+import { injected, coinbaseWallet } from 'wagmi/connectors'
+import { useState, useEffect } from 'react'
+
+const FOUNDER_ADDRESS = (
+  process.env.NEXT_PUBLIC_FOUNDER_ADDRESS || ''
+).toLowerCase()
+
+// Message the user signs to prove wallet ownership
+const SIGN_MESSAGE = `Welcome to Salvage.\n\nSign this message to verify wallet ownership.\n\nThis request will not trigger a blockchain transaction or cost any gas.\n\nTimestamp: ${Math.floor(Date.now() / 60000)}` // changes every minute
+
+interface ConnectButtonProps {
+  onWalletChange?: (address: string | null) => void
+  variant?: 'landing' | 'dashboard'
+}
+
+export default function ConnectButton({
+  onWalletChange,
+  variant = 'dashboard',
+}: ConnectButtonProps) {
+  const { address, isConnected }          = useAccount()
+  const { connect, isPending }            = useConnect()
+  const { disconnect }                    = useDisconnect()
+  const { signMessage, isPending: signing } = useSignMessage()
+
+  const [showMenu,   setShowMenu]   = useState(false)
+  const [verified,   setVerified]   = useState(false)
+  const [verifying,  setVerifying]  = useState(false)
+  const [signError,  setSignError]  = useState<string | null>(null)
+
+  const isFounder = address
+    ? address.toLowerCase() === FOUNDER_ADDRESS
+    : false
+
+  // Reset verification when wallet changes
+  useEffect(() => {
+    setVerified(false)
+    setSignError(null)
+    if (isConnected && address) {
+      // Auto-trigger sign on connect
+      handleSign()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, isConnected])
+
+  // Notify parent
+  useEffect(() => {
+    if (onWalletChange) {
+      onWalletChange(isConnected && address && verified ? address : null)
+    }
+  }, [isConnected, address, verified, onWalletChange])
+
+  const handleSign = () => {
+    if (!address) return
+    setVerifying(true)
+    setSignError(null)
+
+    signMessage(
+      { message: SIGN_MESSAGE },
+      {
+        onSuccess: () => {
+          setVerified(true)
+          setVerifying(false)
+        },
+        onError: (err) => {
+          setVerifying(false)
+          setSignError(
+            err.message.includes('rejected') || err.message.includes('denied')
+              ? 'Signature rejected. Please sign to verify ownership.'
+              : 'Signature failed. Please try again.'
+          )
+        },
+      }
+    )
+  }
+
+  const truncated = address
+    ? `${address.slice(0, 6)}…${address.slice(-4)}`
+    : null
+
+  // ── Connected + verified
+  if (isConnected && address && verified) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <div
+          className={`wallet-chip ${isFounder ? 'founder' : ''}`}
+          onClick={() => setShowMenu(m => !m)}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          <span className="w-dot" />
+          <span>{truncated}</span>
+          {isFounder && (
+            <span style={{ fontSize: '0.7rem', marginLeft: '2px' }}>👑</span>
+          )}
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
+            color: isFounder ? 'var(--eth)' : 'rgba(255,255,255,0.3)',
+            marginLeft: '4px',
+          }}>▾</span>
+        </div>
+
+        {showMenu && (
+          <>
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+              background: 'var(--dark-card)',
+              border: '1px solid var(--dark-border)',
+              borderRadius: '10px', padding: '6px',
+              minWidth: '200px', zIndex: 200,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.63rem',
+                color: 'rgba(255,255,255,0.35)',
+                padding: '8px 10px 4px',
+              }}>
+                {address.slice(0, 12)}…{address.slice(-6)}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
+                color: 'var(--green)', padding: '0 10px 8px',
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}>
+                <span>✓</span> Ownership verified
+              </div>
+              <div style={{ height: '1px', background: 'var(--dark-border)', margin: '2px 0 4px' }} />
+              {isFounder && (
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.65rem',
+                  color: 'var(--eth)', padding: '6px 10px',
+                }}>
+                  👑 Founder wallet
+                </div>
+              )}
+              <button
+                onClick={() => { disconnect(); setShowMenu(false); setVerified(false) }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+                  color: 'var(--crimson)',
+                  background: 'transparent', border: 'none',
+                  padding: '8px 10px', borderRadius: '6px',
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(176,28,46,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                Disconnect
+              </button>
+            </div>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+              onClick={() => setShowMenu(false)}
+            />
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── Connected but awaiting signature
+  if (isConnected && address && !verified) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {signError ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.67rem',
+              color: 'var(--crimson)',
+            }}>
+              {signError}
+            </span>
+            <button
+              className="btn-connect-d"
+              onClick={handleSign}
+              disabled={verifying}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              Sign Again
+            </button>
+            <button
+              onClick={() => { disconnect(); setVerified(false); setSignError(null) }}
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.67rem',
+                color: 'rgba(255,255,255,0.35)', background: 'transparent',
+                border: 'none', cursor: 'pointer', padding: '4px',
+              }}
+            >
+              ✗
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+            color: 'rgba(255,255,255,0.5)',
+          }}>
+            <span style={{
+              width: '14px', height: '14px', border: '2px solid var(--eth)',
+              borderTopColor: 'transparent', borderRadius: '50%',
+              display: 'inline-block', animation: 'spin 0.8s linear infinite',
+            }} />
+            {verifying || signing ? 'Check your wallet…' : 'Requesting signature…'}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Disconnected — wallet picker
+  if (showMenu) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <button
+          className={variant === 'landing' ? 'btn-nav-primary' : 'btn-connect-d'}
+          onClick={() => setShowMenu(false)}
+        >
+          Connect Wallet
+        </button>
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+          background: 'var(--dark-card)',
+          border: '1px solid var(--dark-border)',
+          borderRadius: '10px', padding: '6px',
+          minWidth: '200px', zIndex: 200,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
+            color: 'rgba(255,255,255,0.35)',
+            padding: '8px 10px 6px', letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}>
+            Choose Wallet
+          </div>
+          <div style={{ height: '1px', background: 'var(--dark-border)', margin: '4px 0' }} />
+
+          <button
+            onClick={() => { connect({ connector: injected() }); setShowMenu(false) }}
+            disabled={isPending}
+            style={{
+              width: '100%', textAlign: 'left',
+              fontFamily: 'var(--font-body)', fontSize: '0.82rem',
+              color: 'rgba(255,255,255,0.8)',
+              background: 'transparent', border: 'none',
+              padding: '10px', borderRadius: '6px',
+              cursor: 'pointer', transition: 'background 0.15s',
+              display: 'flex', alignItems: 'center', gap: '10px',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ fontSize: '1.1rem' }}>🦊</span> MetaMask
+          </button>
+
+          <button
+            onClick={() => {
+              connect({ connector: coinbaseWallet({ appName: 'Salvage' }) })
+              setShowMenu(false)
+            }}
+            disabled={isPending}
+            style={{
+              width: '100%', textAlign: 'left',
+              fontFamily: 'var(--font-body)', fontSize: '0.82rem',
+              color: 'rgba(255,255,255,0.8)',
+              background: 'transparent', border: 'none',
+              padding: '10px', borderRadius: '6px',
+              cursor: 'pointer', transition: 'background 0.15s',
+              display: 'flex', alignItems: 'center', gap: '10px',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ fontSize: '1.1rem' }}>🔵</span> Coinbase Wallet
+          </button>
+        </div>
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+          onClick={() => setShowMenu(false)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      className={variant === 'landing' ? 'btn-nav-primary' : 'btn-connect-d'}
+      onClick={() => setShowMenu(true)}
+      disabled={isPending}
+    >
+      {isPending ? 'Connecting…' : 'Connect Wallet'}
+    </button>
+  )
+}
