@@ -1,6 +1,6 @@
 'use client'
 
-import { ScanResult, TriageCheck } from '@/types'
+import { ScanResult, TriageCheck, StrandedToken } from '@/types'
 import { truncateAddress, explorerUrl } from '@/lib/utils'
 
 interface ScanResultCardProps {
@@ -20,6 +20,24 @@ const CHECK_CONFIG = {
   warn: { className: 'ti-warn', icon: '!' },
 }
 
+// ── Format USD value
+function formatUsd(value: number): string {
+  if (value === 0) return '$0'
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`
+  return `$${value.toFixed(2)}`
+}
+
+// ── Format token balance
+function formatBalance(balance: string, symbol: string): string {
+  const num = parseFloat(balance)
+  if (num === 0) return `0 ${symbol}`
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M ${symbol}`
+  if (num >= 1_000)     return `${(num / 1_000).toFixed(2)}K ${symbol}`
+  if (num < 0.0001)     return `<0.0001 ${symbol}`
+  return `${num.toFixed(4)} ${symbol}`
+}
+
 function TriageRow({ check }: { check: TriageCheck }) {
   const cfg = CHECK_CONFIG[check.status]
   return (
@@ -33,12 +51,60 @@ function TriageRow({ check }: { check: TriageCheck }) {
   )
 }
 
+function StrandedTokenRow({ token }: { token: StrandedToken }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '10px 14px', borderRadius: '7px',
+      background: 'var(--card-inner)', border: '1px solid var(--border)',
+      marginBottom: '6px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          width: '28px', height: '28px', borderRadius: '6px',
+          background: 'var(--eth-soft)', border: '1px solid var(--eth-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-mono)', fontSize: '0.55rem',
+          fontWeight: 600, color: 'var(--eth)', flexShrink: 0,
+        }}>
+          {token.tokenSymbol.slice(0, 4)}
+        </div>
+        <div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+            {token.tokenName}
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-2)', marginTop: '1px' }}>
+            {formatBalance(token.balanceFormatted, token.tokenSymbol)}
+          </div>
+        </div>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div style={{
+          fontFamily: 'var(--font-display)', fontSize: '1rem',
+          fontWeight: 700, color: 'var(--text)',
+        }}>
+          {formatUsd(token.valueUsd)}
+        </div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '1px' }}>
+          ${token.priceUsd.toFixed(token.priceUsd < 0.01 ? 6 : 2)} per token
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ScanResultCard({ result, isFounder }: ScanResultCardProps) {
-  const statusCfg  = STATUS_CONFIG[result.triageStatus]
+  const statusCfg    = STATUS_CONFIG[result.triageStatus]
   const explorerLink = explorerUrl(result.contractAddress, result.chain)
-  const chainLabel = result.chain === 'eth' ? 'Ethereum' : 'Base'
-  const symbol     = result.tokenSymbol || '???'
-  const name       = result.tokenName   || 'Unknown Contract'
+  const chainLabel   = result.chain === 'eth' ? 'Ethereum' : 'Base'
+  const symbol       = result.tokenSymbol || '???'
+  const name         = result.tokenName   || 'Unknown Contract'
+
+  const hasStranded  = result.strandedTokens && result.strandedTokens.length > 0
+  const totalUsd     = result.totalStrandedUsd ?? 0
+  const feeUsd       = result.finderFeeUsd     ?? 0
+
+  const guidePrice   = result.triageStatus === 'recoverable' ? '$149' : '$99'
 
   return (
     <div className="r-card">
@@ -61,29 +127,56 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
       <div className="r-metrics">
         <div className="r-metric">
           <div className="r-m-label">Stranded Value</div>
-          {/* M2: real values will populate here */}
-          <div className="r-m-val" style={{ fontSize: '1rem', color: 'var(--text-2)' }}>
-            Scanning in M2
-          </div>
-          <div className="r-m-sub">Token sweep in next milestone</div>
+          {hasStranded ? (
+            <>
+              <div className="r-m-val">{formatUsd(totalUsd)}</div>
+              <div className="r-m-sub">{result.strandedTokens!.length} token{result.strandedTokens!.length > 1 ? 's' : ''} found</div>
+            </>
+          ) : (
+            <>
+              <div className="r-m-val muted">$0</div>
+              <div className="r-m-sub">No stranded tokens found</div>
+            </>
+          )}
         </div>
         <div className="r-metric">
           <div className="r-m-label">Your Finder's Fee</div>
-          <div className="r-m-val accent" style={{ fontSize: '1rem' }}>
-            7% on recovery
-          </div>
-          <div className="r-m-sub">After successful claim</div>
+          {hasStranded ? (
+            <>
+              <div className="r-m-val accent">{formatUsd(feeUsd)}</div>
+              <div className="r-m-sub">7% on successful recovery</div>
+            </>
+          ) : (
+            <>
+              <div className="r-m-val muted">—</div>
+              <div className="r-m-sub">No value to recover</div>
+            </>
+          )}
         </div>
         <div className="r-metric">
           <div className="r-m-label">Deployed By</div>
           <div className="r-m-val mono">
-            {result.deployerAddress
-              ? truncateAddress(result.deployerAddress)
-              : '—'}
+            {result.deployerAddress ? truncateAddress(result.deployerAddress) : '—'}
           </div>
           <div className="r-m-sub">Contract creator</div>
         </div>
       </div>
+
+      {/* Stranded tokens breakdown */}
+      {hasStranded && (
+        <div style={{ padding: '16px 26px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: 'var(--text-2)', marginBottom: '10px',
+          }}>
+            Stranded Tokens
+          </div>
+          {result.strandedTokens!.map((token, i) => (
+            <StrandedTokenRow key={i} token={token} />
+          ))}
+        </div>
+      )}
 
       {/* Founder note */}
       {isFounder && result.triageStatus !== 'unrecoverable' && (
@@ -120,7 +213,7 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
               </button>
             ) : (
               <button className="btn-guide" style={{ marginLeft: 'auto' }}>
-                Unlock Recovery Guide — {result.triageStatus === 'recoverable' ? '$149' : '$99'}
+                Unlock Recovery Guide — {guidePrice}
               </button>
             )}
           </>

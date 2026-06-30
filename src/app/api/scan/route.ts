@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scanContract } from '@/lib/scanner'
+import { sweepTokenBalances, calcTotals } from '@/lib/sweeper'
 import { isValidAddress } from '@/lib/utils'
 import { Chain, ScanApiResponse } from '@/types'
 
@@ -37,8 +38,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Run the scan
+    // Step 1: Run triage scan
     const result = await scanContract(address, chain)
+
+    // Step 2: Sweep token balances (M2) — run in parallel with triage
+    const strandedTokens = await sweepTokenBalances(address, chain)
+    const { totalStrandedUsd, finderFeeUsd } = calcTotals(strandedTokens)
+
+    // Step 3: Attach M2 data to result
+    result.strandedTokens   = strandedTokens
+    result.totalStrandedUsd = totalStrandedUsd
+    result.finderFeeUsd     = finderFeeUsd
 
     return NextResponse.json<ScanApiResponse>({ success: true, result })
   } catch (error) {
