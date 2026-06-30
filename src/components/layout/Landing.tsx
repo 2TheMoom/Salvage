@@ -155,22 +155,22 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         <div className="l-stats-inner">
           <div className="l-stat">
             <div className="l-stat-label">Total Stranded · ETH + Base</div>
-            <div className="l-stat-num">$148.3M</div>
-            <div className="l-stat-sub">14,822 contracts indexed</div>
+            <div className="l-stat-num">—</div>
+            <div className="l-stat-sub">Indexer live in M3</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">Recoverable Value</div>
-            <div className="l-stat-num accent">$31.7M</div>
-            <div className="l-stat-sub">2,109 with rescue fn</div>
+            <div className="l-stat-num accent">—</div>
+            <div className="l-stat-sub">Indexer live in M3</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">All-Time Recovered</div>
-            <div className="l-stat-num">$9.1M</div>
-            <div className="l-stat-sub">since protocol launch</div>
+            <div className="l-stat-num">$0</div>
+            <div className="l-stat-sub">No recoveries yet</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">Protocol Fees Earned</div>
-            <div className="l-stat-num accent">$12,640</div>
+            <div className="l-stat-num accent">$0</div>
             <div className="l-stat-sub">3% cut · on-chain to founder</div>
           </div>
         </div>
