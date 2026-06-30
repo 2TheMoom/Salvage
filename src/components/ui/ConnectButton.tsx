@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
-import { injected, coinbaseWallet } from 'wagmi/connectors'
+import { injected, coinbaseWallet } from '@wagmi/connectors'
 import { useState, useEffect } from 'react'
 
 const FOUNDER_ADDRESS = (
