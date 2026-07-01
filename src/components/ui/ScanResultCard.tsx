@@ -93,7 +93,8 @@ function StrandedTokenRow({ token }: { token: StrandedToken }) {
 }
 
 export default function ScanResultCard({ result, isFounder }: ScanResultCardProps) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied]             = useState(false)
+  const [showAllTokens, setShowAllTokens] = useState(false)
 
   const statusCfg    = STATUS_CONFIG[result.triageStatus]
   const explorerLink = explorerUrl(result.contractAddress, result.chain)
@@ -175,21 +176,45 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
         </div>
       </div>
 
-      {/* Stranded tokens breakdown */}
-      {hasStranded && (
-        <div style={{ padding: '16px 26px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{
-            fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
-            letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: 'var(--text-2)', marginBottom: '10px',
-          }}>
-            Stranded Tokens
+      {/* Stranded tokens breakdown — top 5 by value, expandable */}
+      {hasStranded && (() => {
+        const sorted  = [...result.strandedTokens!].sort((a, b) => b.valueUsd - a.valueUsd)
+        const COLLAPSE_AT = 5
+        const isLong  = sorted.length > COLLAPSE_AT
+        const visible = showAllTokens || !isLong ? sorted : sorted.slice(0, COLLAPSE_AT)
+        const hiddenCount = sorted.length - COLLAPSE_AT
+        return (
+          <div style={{ padding: '16px 26px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--text-2)', marginBottom: '10px',
+            }}>
+              Stranded Tokens
+            </div>
+            {visible.map((token, i) => (
+              <StrandedTokenRow key={i} token={token} />
+            ))}
+            {isLong && (
+              <button
+                onClick={() => setShowAllTokens(v => !v)}
+                style={{
+                  width: '100%', padding: '9px 14px', marginTop: '2px',
+                  borderRadius: '7px', border: '1px dashed var(--border)',
+                  background: 'transparent', cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.68rem',
+                  fontWeight: 600, letterSpacing: '0.05em',
+                  color: 'var(--text-2)',
+                }}
+              >
+                {showAllTokens
+                  ? '▴ Show top 5 only'
+                  : `▾ Show all ${sorted.length} tokens (+${hiddenCount} more)`}
+              </button>
+            )}
           </div>
-          {result.strandedTokens!.map((token, i) => (
-            <StrandedTokenRow key={i} token={token} />
-          ))}
-        </div>
-      )}
+        )
+      })()}
 
       {/* Founder note */}
       {isFounder && result.triageStatus !== 'unrecoverable' && (
