@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "@tanstack/react-query": "^5.56.0",
     "@wagmi/connectors": "^5.1.0",
     "next": "14.2.5",

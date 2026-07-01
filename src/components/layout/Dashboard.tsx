@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
@@ -12,7 +12,16 @@ const FOUNDER_ADDRESS = (
   process.env.NEXT_PUBLIC_FOUNDER_ADDRESS || ''
 ).toLowerCase()
 
-const LEADERBOARD: { addr: string; desc: string; amount: string; status: string }[] = []
+type LeaderboardEntry = {
+  id: string
+  contract_address: string
+  token_symbol: string
+  token_name: string
+  chain: string
+  stranded_value_usd: number
+  triage_status: string
+  verified: boolean
+}
 
 type ScanState = 'idle' | 'loading' | 'success' | 'error'
 
@@ -21,19 +30,45 @@ interface DashboardProps {
   connectedWallet: string | null
 }
 
+function formatUsdShort(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`
+  return `$${value.toFixed(0)}`
+}
+
 export default function Dashboard({ onGoLanding }: DashboardProps) {
-  const { address, isConnected }  = useAccount()
-  const [inputAddr, setInputAddr] = useState('')
-  const [chain, setChain]         = useState<Chain>('eth')
-  const [scanState, setScanState] = useState<ScanState>('idle')
-  const [result, setResult]       = useState<ScanResult | null>(null)
-  const [errorMsg, setErrorMsg]   = useState<string | null>(null)
+  const { address, isConnected }      = useAccount()
+  const [inputAddr, setInputAddr]     = useState('')
+  const [chain, setChain]             = useState<Chain>('eth')
+  const [scanState, setScanState]     = useState<ScanState>('idle')
+  const [result, setResult]           = useState<ScanResult | null>(null)
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
+  const [lbLoading, setLbLoading]     = useState(false)
 
   const isFounder = address
     ? address.toLowerCase() === FOUNDER_ADDRESS
     : false
 
   const connectedWallet = isConnected && address ? address : null
+
+  // Fetch leaderboard on mount and chain change
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setLbLoading(true)
+      try {
+        const res  = await fetch(`/api/leaderboard?chain=${lbChain}`)
+        const data = await res.json()
+        if (data.success) setLeaderboard(data.data || [])
+      } catch {
+        setLeaderboard([])
+      } finally {
+        setLbLoading(false)
+      }
+    }
+    fetchLeaderboard()
+  }, [lbChain])
 
   const handleScan = useCallback(async () => {
     if (!isValidAddress(inputAddr)) {
@@ -63,7 +98,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
       setErrorMsg('Network error. Please try again.')
       setScanState('error')
     }
-  }, [address, chain])
+  }, [inputAddr, chain])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleScan()
@@ -129,15 +164,11 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                 <button
                   className={`c-tab ${chain === 'eth' ? 'on' : ''}`}
                   onClick={() => setChain('eth')}
-                >
-                  ETH
-                </button>
+                >ETH</button>
                 <button
                   className={`c-tab ${chain === 'base' ? 'on' : ''}`}
                   onClick={() => setChain('base')}
-                >
-                  BASE
-                </button>
+                >BASE</button>
               </div>
               <input
                 className="scan-input"
@@ -216,45 +247,68 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
 
         {/* Sidebar */}
         <div className="d-sidebar">
+
           {/* Leaderboard */}
           <div className="s-card">
             <div className="s-head">
               <div>
                 <div className="s-title">Stranded Leaderboard</div>
-                <div className="s-sub">Updated every 6 hrs · click to scan</div>
+                <div className="s-sub">
+                  {lbLoading ? 'Loading…' : 'Click row to scan'}
+                </div>
               </div>
               <div className="s-tabs">
-                <button className="s-tab on">ETH</button>
-                <button className="s-tab">Base</button>
+                <button
+                  className={`s-tab ${lbChain === 'eth' ? 'on' : ''}`}
+                  onClick={() => setLbChain('eth')}
+                >ETH</button>
+                <button
+                  className={`s-tab ${lbChain === 'base' ? 'on' : ''}`}
+                  onClick={() => setLbChain('base')}
+                >Base</button>
               </div>
             </div>
-            {LEADERBOARD.length === 0 ? (
+
+            {lbLoading ? (
+              <div style={{
+                padding: '32px 22px', textAlign: 'center',
+                fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+                color: 'var(--text-3)',
+              }}>
+                Loading…
+              </div>
+            ) : leaderboard.length === 0 ? (
               <div style={{
                 padding: '32px 22px', textAlign: 'center',
                 fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
                 color: 'var(--text-3)', lineHeight: 1.6,
               }}>
-                No entries yet.<br />Indexer launches in M3.
+                No entries yet.<br />Scan contracts to populate.
               </div>
             ) : (
-              LEADERBOARD.map((row, i) => (
+              leaderboard.map((row, i) => (
                 <div
-                  key={i}
+                  key={row.id}
                   className="lb-row"
-                  onClick={() => setInputAddr(row.addr.replace('…', '0000000'))}
+                  onClick={() => setInputAddr(row.contract_address)}
                   title="Click to scan this contract"
                 >
                   <div className="lb-rank">{i + 1}</div>
                   <div className="lb-info">
-                    <div className="lb-addr">{row.addr}</div>
-                    <div className="lb-desc">{row.desc}</div>
+                    <div className="lb-addr">
+                      {row.contract_address.slice(0, 6)}…{row.contract_address.slice(-4)}
+                    </div>
+                    <div className="lb-desc">{row.token_name}</div>
                   </div>
                   <div className="lb-right">
-                    <div className="lb-usd">{row.amount}</div>
+                    <div className="lb-usd">{formatUsdShort(row.stranded_value_usd)}</div>
                     <div className="lb-dot-row">
-                      <span className={`s-dot dot-${row.status === 'recoverable' ? 'g' : row.status === 'needs_action' ? 'a' : 'r'}`} />
+                      <span className={`s-dot ${
+                        row.triage_status === 'recoverable'   ? 'dot-g' :
+                        row.triage_status === 'needs_action'  ? 'dot-a' : 'dot-r'
+                      }`} />
                       <span className="lb-dot-label">
-                        {row.status === 'needs_action' ? 'needs action' : row.status}
+                        {row.triage_status === 'needs_action' ? 'needs action' : row.triage_status}
                       </span>
                     </div>
                   </div>
@@ -300,6 +354,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
               )}
             </div>
           </div>
+
         </div>
       </div>
 
