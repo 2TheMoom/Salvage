@@ -135,7 +135,7 @@ async function fetchPricesBySymbol(
     try {
       const res = await fetch(
         `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?symbols=${symbolStr}`,
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
       )
       if (!res.ok) continue
       const data = await res.json()

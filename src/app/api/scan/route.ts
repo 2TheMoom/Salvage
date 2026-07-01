@@ -4,6 +4,10 @@ import { sweepTokenBalances, calcTotals } from '@/lib/sweeper'
 import { isValidAddress } from '@/lib/utils'
 import { Chain, ScanApiResponse } from '@/types'
 
+// Never cache anything about this route — every scan must be live.
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -40,6 +44,9 @@ export async function POST(req: NextRequest) {
 
     // Step 1: Run triage scan
     const result = await scanContract(address, chain)
+    console.log(
+      `[scan] ${chain}:${address} → name="${result.tokenName ?? 'NONE'}" symbol="${result.tokenSymbol ?? 'NONE'}" impl=${result.implementationAddress ?? 'none'} status=${result.triageStatus}`
+    )
 
     // Step 2: Sweep token balances (M2) — run in parallel with triage
     const strandedTokens = await sweepTokenBalances(address, chain)

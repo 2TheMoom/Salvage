@@ -152,7 +152,7 @@ async function etherscanFetch(
 
   for (let i = 0; i < attempts; i++) {
     try {
-      const res  = await fetch(url)
+      const res  = await fetch(url, { cache: 'no-store' })
       const data = await res.json() as Record<string, unknown>
       const resultStr = typeof data.result === 'string' ? data.result : ''
       const isRateLimited =
