@@ -1,10 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { ScanResult, TriageCheck, StrandedToken } from '@/types'
 import { truncateAddress, explorerUrl } from '@/lib/utils'
+import { generateOutreachTemplate } from '@/lib/outreach'
+import RegisterFindButton from '@/components/ui/RegisterFindButton'
+import RecoveryGuideButton from '@/components/ui/RecoveryGuideButton'
 
 interface ScanResultCardProps {
-  result: ScanResult
+  result:    ScanResult
   isFounder: boolean
 }
 
@@ -20,7 +24,6 @@ const CHECK_CONFIG = {
   warn: { className: 'ti-warn', icon: '!' },
 }
 
-// ── Format USD value
 function formatUsd(value: number): string {
   if (value === 0) return '$0'
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
@@ -28,13 +31,12 @@ function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`
 }
 
-// ── Format token balance
 function formatBalance(balance: string, symbol: string): string {
   const num = parseFloat(balance)
-  if (num === 0) return `0 ${symbol}`
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M ${symbol}`
-  if (num >= 1_000)     return `${(num / 1_000).toFixed(2)}K ${symbol}`
-  if (num < 0.0001)     return `<0.0001 ${symbol}`
+  if (num === 0)           return `0 ${symbol}`
+  if (num >= 1_000_000)    return `${(num / 1_000_000).toFixed(2)}M ${symbol}`
+  if (num >= 1_000)        return `${(num / 1_000).toFixed(2)}K ${symbol}`
+  if (num < 0.0001)        return `<0.0001 ${symbol}`
   return `${num.toFixed(4)} ${symbol}`
 }
 
@@ -79,10 +81,7 @@ function StrandedTokenRow({ token }: { token: StrandedToken }) {
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{
-          fontFamily: 'var(--font-display)', fontSize: '1rem',
-          fontWeight: 700, color: 'var(--text)',
-        }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>
           {formatUsd(token.valueUsd)}
         </div>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '1px' }}>
@@ -94,17 +93,31 @@ function StrandedTokenRow({ token }: { token: StrandedToken }) {
 }
 
 export default function ScanResultCard({ result, isFounder }: ScanResultCardProps) {
+  const [copied, setCopied] = useState(false)
+
   const statusCfg    = STATUS_CONFIG[result.triageStatus]
   const explorerLink = explorerUrl(result.contractAddress, result.chain)
   const chainLabel   = result.chain === 'eth' ? 'Ethereum' : 'Base'
   const symbol       = result.tokenSymbol || '???'
   const name         = result.tokenName   || 'Unknown Contract'
-
   const hasStranded  = result.strandedTokens && result.strandedTokens.length > 0
   const totalUsd     = result.totalStrandedUsd ?? 0
   const feeUsd       = result.finderFeeUsd     ?? 0
 
-  const guidePrice   = result.triageStatus === 'recoverable' ? '$149' : '$99'
+  // Get rescue function name from checks for guide content
+  const rescueCheck      = result.checks.find(c => c.label.includes('()') && c.status === 'pass')
+  const rescueFunctionName = rescueCheck?.label.replace('()', '').replace(' found in ABI', '').replace(' found in verified ABI', '').trim()
+
+  // Get primary stranded token address for registration
+  const primaryTokenAddress = result.strandedTokens?.[0]?.tokenAddress
+    || '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+
+  const handleCopyOutreach = () => {
+    const template = generateOutreachTemplate(result)
+    navigator.clipboard.writeText(template)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="r-card">
@@ -140,7 +153,7 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
           )}
         </div>
         <div className="r-metric">
-          <div className="r-m-label">Your Finder's Fee</div>
+          <div className="r-m-label">Your Finder&apos;s Fee</div>
           {hasStranded ? (
             <>
               <div className="r-m-val accent">{formatUsd(feeUsd)}</div>
@@ -196,8 +209,18 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
       <div className="r-actions">
         {result.triageStatus !== 'unrecoverable' ? (
           <>
-            <button className="btn-reg">Register This Find</button>
-            <button className="btn-out">Copy Outreach</button>
+            <RegisterFindButton
+              contractAddress={result.contractAddress}
+              tokenAddress={primaryTokenAddress}
+              chain={result.chain}
+              triageStatus={result.triageStatus}
+            />
+            <button
+              className="btn-out"
+              onClick={handleCopyOutreach}
+            >
+              {copied ? 'Copied! ✓' : 'Copy Outreach'}
+            </button>
             <a
               href={explorerLink}
               target="_blank"
@@ -207,19 +230,23 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
             >
               {chainLabel === 'Ethereum' ? 'Etherscan' : 'Basescan'} ↗
             </a>
-            {isFounder ? (
-              <button className="btn-guide-founder" style={{ marginLeft: 'auto' }}>
-                View Recovery Guide (Founder)
-              </button>
-            ) : (
-              <button className="btn-guide" style={{ marginLeft: 'auto' }}>
-                Unlock Recovery Guide — {guidePrice}
-              </button>
-            )}
+            <RecoveryGuideButton
+              triageStatus={result.triageStatus}
+              contractAddress={result.contractAddress}
+              isFounder={isFounder}
+              rescueFunctionName={rescueFunctionName}
+            />
           </>
         ) : (
           <>
             <button className="btn-cant" disabled>Cannot Register</button>
+            <button
+              className="btn-out"
+              style={{ opacity: 0.35, cursor: 'not-allowed' }}
+              disabled
+            >
+              Copy Outreach
+            </button>
             <a
               href={explorerLink}
               target="_blank"
