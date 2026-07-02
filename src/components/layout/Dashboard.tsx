@@ -4,8 +4,9 @@ import { useState, useCallback, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
+import VictimResultCard from '@/components/ui/VictimResultCard'
 import ConnectButton from '@/components/ui/ConnectButton'
-import { ScanResult, Chain, ScanApiResponse } from '@/types'
+import { ScanResult, Chain, ScanApiResponse, VictimScanResult, VictimScanApiResponse } from '@/types'
 import { isValidAddress } from '@/lib/utils'
 
 const FOUNDER_ADDRESS = (
@@ -38,10 +39,12 @@ function formatUsdShort(value: number): string {
 
 export default function Dashboard({ onGoLanding }: DashboardProps) {
   const { address, isConnected }      = useAccount()
+  const [mode, setMode]               = useState<'contract' | 'victim'>('contract')
   const [inputAddr, setInputAddr]     = useState('')
   const [chain, setChain]             = useState<Chain>('eth')
   const [scanState, setScanState]     = useState<ScanState>('idle')
   const [result, setResult]           = useState<ScanResult | null>(null)
+  const [victimResult, setVictimResult] = useState<VictimScanResult | null>(null)
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
@@ -72,19 +75,36 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
 
   const handleScan = useCallback(async () => {
     if (!isValidAddress(inputAddr)) {
-      setErrorMsg('Enter a valid 0x contract address.')
+      setErrorMsg(mode === 'victim'
+        ? 'Enter a valid 0x wallet address.'
+        : 'Enter a valid 0x contract address.')
       return
     }
     setScanState('loading')
     setResult(null)
+    setVictimResult(null)
     setErrorMsg(null)
 
     try {
-      const res  = await fetch('/api/scan', {
+      const endpoint = mode === 'victim' ? '/api/victim-scan' : '/api/scan'
+      const res  = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ address: inputAddr, chain }),
       })
+
+      if (mode === 'victim') {
+        const data: VictimScanApiResponse = await res.json()
+        if (data.success && data.result) {
+          setVictimResult(data.result)
+          setScanState('success')
+        } else {
+          setErrorMsg(data.error || 'Scan failed.')
+          setScanState('error')
+        }
+        return
+      }
+
       const data: ScanApiResponse = await res.json()
 
       if (data.success && data.result) {
@@ -98,7 +118,16 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
       setErrorMsg('Network error. Please try again.')
       setScanState('error')
     }
-  }, [inputAddr, chain])
+  }, [inputAddr, chain, mode])
+
+  const switchMode = (m: 'contract' | 'victim') => {
+    if (m === mode) return
+    setMode(m)
+    setScanState('idle')
+    setResult(null)
+    setVictimResult(null)
+    setErrorMsg(null)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleScan()
@@ -158,7 +187,24 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
         <div>
           {/* Scan zone */}
           <div className="scan-zone">
-            <div className="scan-zone-label">Contract Scanner</div>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: '10px',
+            }}>
+              <div className="scan-zone-label" style={{ marginBottom: 0 }}>
+                {mode === 'contract' ? 'Contract Scanner' : 'Lost Token Scanner'}
+              </div>
+              <div className="chain-toggle">
+                <button
+                  className={`c-tab ${mode === 'contract' ? 'on' : ''}`}
+                  onClick={() => switchMode('contract')}
+                >Scan Contract</button>
+                <button
+                  className={`c-tab ${mode === 'victim' ? 'on' : ''}`}
+                  onClick={() => switchMode('victim')}
+                >Did I Lose Tokens?</button>
+              </div>
+            </div>
             <div className="scan-bar">
               <div className="chain-toggle">
                 <button
@@ -172,7 +218,9 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
               </div>
               <input
                 className="scan-input"
-                placeholder="Paste any ERC-20 contract address…"
+                placeholder={mode === 'victim'
+                  ? 'Paste your wallet address…'
+                  : 'Paste any ERC-20 contract address…'}
                 value={inputAddr}
                 onChange={e => setInputAddr(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -210,10 +258,13 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                   <circle cx="44" cy="44" r="4.5" fill="var(--eth)"/>
                 </svg>
               </div>
-              <div className="scan-empty-title">Paste a contract address to begin</div>
+              <div className="scan-empty-title">
+                {mode === 'victim' ? 'Paste your wallet address to begin' : 'Paste a contract address to begin'}
+              </div>
               <div className="scan-empty-sub">
-                Enter any ERC-20 token contract on Ethereum or Base. Salvage will check for
-                stranded tokens, rescue functions, and recovery paths.
+                {mode === 'victim'
+                  ? 'Salvage will scan your transfer history for tokens mistakenly sent to contract addresses — like the classic mistake of sending a token to its own contract — and check if they can be recovered.'
+                  : 'Enter any ERC-20 token contract on Ethereum or Base. Salvage will check for stranded tokens, rescue functions, and recovery paths.'}
               </div>
             </div>
           )}
@@ -228,14 +279,27 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                   <circle cx="44" cy="44" r="4.5" fill="var(--eth)"/>
                 </svg>
               </div>
-              <div className="scan-empty-title">Scanning contract…</div>
+              <div className="scan-empty-title">
+                {mode === 'victim' ? 'Scanning your history…' : 'Scanning contract…'}
+              </div>
               <div className="scan-empty-sub">
-                Checking bytecode · Fetching ABI · Running triage
+                {mode === 'victim'
+                  ? 'Reading transfers · Verifying mistakes on-chain · Triaging recovery paths'
+                  : 'Checking bytecode · Fetching ABI · Running triage'}
               </div>
             </div>
           )}
 
-          {scanState === 'success' && result && (
+          {scanState === 'success' && mode === 'victim' && victimResult && (
+            <>
+              <div className="col-label">
+                Lost Token Report — {victimResult.wallet.slice(0, 6)}…{victimResult.wallet.slice(-4)}
+              </div>
+              <VictimResultCard result={victimResult} />
+            </>
+          )}
+
+          {scanState === 'success' && mode === 'contract' && result && (
             <>
               <div className="col-label">
                 Scan Result — {result.contractAddress.slice(0, 6)}…{result.contractAddress.slice(-4)}

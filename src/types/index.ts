@@ -46,3 +46,33 @@ export interface ScanApiResponse {
   result?: ScanResult
   error?: string
 }
+// ── Victim scan (tokens mistakenly sent to contract addresses)
+
+export interface VictimFinding {
+  txHash: string
+  timestamp?: string
+  tokenAddress: string
+  tokenSymbol: string
+  tokenName: string
+  amount: string
+  valueUsd: number
+  recipientContract: string
+  recipientName?: string
+  sentToSelf: boolean          // classic: token sent to its own contract
+  contractStillHolds: string   // recipient's current balance of that token
+  triageStatus?: TriageStatus
+  rescueFunction?: string
+}
+
+export interface VictimScanResult {
+  wallet: string
+  chain: Chain
+  findings: VictimFinding[]
+  totalLostUsd: number
+}
+
+export interface VictimScanApiResponse {
+  success: boolean
+  result?: VictimScanResult
+  error?: string
+}

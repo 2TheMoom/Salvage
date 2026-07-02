@@ -105,11 +105,42 @@ async function getAllTokenBalances(
   return all
 }
 
+// ── Step 1b: GUARANTEED known-token pass.
+// Discovery pagination can be exhausted by spam before reaching high
+// addresses (USDT at 0xdac1... on the USDC contract). This explicit
+// balance check on every SYMBOL_MAP token makes majors impossible to miss.
+async function getKnownTokenBalances(
+  address: string,
+  chain: Chain
+): Promise<Array<{ contractAddress: string; tokenBalance: string }>> {
+  const rpc = getRpcUrl(chain)
+  const knownAddrs = Object.keys(SYMBOL_MAP)
+  const out: Array<{ contractAddress: string; tokenBalance: string }> = []
+
+  try {
+    const res = await fetch(rpc, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1,
+        method:  'alchemy_getTokenBalances',
+        params:  [address, knownAddrs],
+      }),
+    })
+    const data = await res.json()
+    for (const t of data.result?.tokenBalances || []) {
+      if (!t.tokenBalance) continue
+      try { if (BigInt(t.tokenBalance) > 0n) out.push(t) } catch { /* skip */ }
+    }
+  } catch { /* discovery still covers most */ }
+  return out
+}
+
 // ── Step 2: Token metadata
-async function getTokenMetadata(
+export async function getTokenMetadata(
   tokenAddress: string,
   chain: Chain
-): Promise<{ name: string; symbol: string; decimals: number } | null> {
+): Promise<{ name: string; symbol: string; decimals: number; logo: string | null } | null> {
   const rpc = getRpcUrl(chain)
   try {
     const res = await fetch(rpc, {
@@ -123,12 +154,13 @@ async function getTokenMetadata(
     })
     const data = await res.json()
     if (!data.result) return null
-    const { name, symbol, decimals } = data.result
+    const { name, symbol, decimals, logo } = data.result
     if (decimals === null || decimals === undefined || decimals < 0) return null
     return {
       name:     name     || 'Unknown Token',
       symbol:   symbol   || '???',
       decimals: decimals || 18,
+      logo:     logo     || null,
     }
   } catch { return null }
 }
@@ -170,7 +202,7 @@ async function fetchPricesBySymbol(
 }
 
 // ── Step 3b: Price by ADDRESS — for unknown/long-tail tokens (DEX data)
-async function fetchPricesByAddress(
+export async function fetchPricesByAddress(
   tokenAddresses: string[],
   chain: Chain
 ): Promise<Record<string, number>> {
@@ -218,7 +250,7 @@ async function fetchPricesByAddress(
 }
 
 // ── Format hex balance
-function formatBalance(rawHex: string, decimals: number): string {
+export function formatBalance(rawHex: string, decimals: number): string {
   try {
     const raw     = BigInt(rawHex)
     if (raw === 0n) return '0'
@@ -238,8 +270,19 @@ export async function sweepTokenBalances(
 ): Promise<StrandedToken[]> {
   const address = contractAddress.toLowerCase()
 
-  // Step 1: All ERC-20 balances
-  const balances = await getAllTokenBalances(address, chain)
+  // Step 1: Discovery (paginated) + guaranteed known-token pass, merged
+  const [discovered, guaranteed] = await Promise.all([
+    getAllTokenBalances(address, chain),
+    getKnownTokenBalances(address, chain),
+  ])
+  const seen = new Set<string>()
+  const balances: Array<{ contractAddress: string; tokenBalance: string }> = []
+  for (const b of [...guaranteed, ...discovered]) {
+    const key = b.contractAddress.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    balances.push(b)
+  }
   if (balances.length === 0) return []
 
   // Step 2: Price FIRST, metadata second.
@@ -291,9 +334,12 @@ export async function sweepTokenBalances(
     )
     for (let j = 0; j < batch.length; j++) {
       const meta = results[j]
-      if (meta.status === 'fulfilled' && meta.value) {
-        withMetadata.push({ ...batch[j], ...meta.value })
-      }
+      if (meta.status !== 'fulfilled' || !meta.value) continue
+      // VERIFIED FILTER: unknown tokens without an Alchemy curated logo are
+      // unverified long-tail/spam (thin-liquidity junk prices) — drop them.
+      if (!SYMBOL_MAP[batch[j].tokenAddress] && !meta.value.logo) continue
+      const { logo: _logo, ...metaFields } = meta.value
+      withMetadata.push({ ...batch[j], ...metaFields })
     }
   }
 
