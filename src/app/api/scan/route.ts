@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { scanContract } from '@/lib/scanner'
 import { sweepTokenBalances, calcTotals } from '@/lib/sweeper'
 import { isValidAddress } from '@/lib/utils'
@@ -59,6 +60,35 @@ export async function POST(req: NextRequest) {
     result.strandedTokens   = strandedTokens
     result.totalStrandedUsd = totalStrandedUsd
     result.finderFeeUsd     = finderFeeUsd
+
+    // Step 4: Keep the leaderboard live — upsert this scan's row.
+    // Fire-and-forget with its own error handling: a leaderboard hiccup
+    // must never fail the scan itself.
+    if (result.isContract) {
+      try {
+        const adminClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        const { error: lbError } = await adminClient
+          .from('salvage_leaderboard')
+          .upsert({
+            contract_address:   address.toLowerCase(),
+            token_symbol:       result.tokenSymbol || 'MULTI',
+            token_name:         result.tokenName   || 'Multiple tokens',
+            chain,
+            stranded_value_usd: totalStrandedUsd,
+            triage_status:      result.triageStatus,
+            deployer_address:   result.deployerAddress || null,
+            last_scanned_at:    new Date().toISOString(),
+          }, {
+            onConflict: 'contract_address,chain',
+          })
+        if (lbError) console.error('[scan→leaderboard] upsert failed:', lbError.message)
+      } catch (e) {
+        console.error('[scan→leaderboard] error:', e)
+      }
+    }
 
     return NextResponse.json<ScanApiResponse>({ success: true, result })
   } catch (error) {
