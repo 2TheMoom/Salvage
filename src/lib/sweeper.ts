@@ -130,11 +130,14 @@ async function fetchPricesBySymbol(
 
   // Batch into 25
   for (let i = 0; i < unique.length; i += 25) {
-    const chunk     = unique.slice(i, i + 25)
-    const symbolStr = chunk.join(',')
+    const chunk = unique.slice(i, i + 25)
+    // Alchemy expects REPEATED params: ?symbols=USDT&symbols=WBTC&...
+    // A comma-joined list is rejected and returns no prices.
+    const params = new URLSearchParams()
+    chunk.forEach(s => params.append('symbols', s))
     try {
       const res = await fetch(
-        `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?symbols=${symbolStr}`,
+        `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?${params.toString()}`,
         { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
       )
       if (!res.ok) continue
@@ -261,18 +264,23 @@ export async function sweepTokenBalances(
   const knownSymbols  = knownTokens.map(t => SYMBOL_MAP[t.tokenAddress])
   const symbolPrices  = await fetchPricesBySymbol(knownSymbols)
 
-  // Fetch prices for unknown tokens by address
-  const unknownAddrs  = unknownTokens.map(t => t.tokenAddress)
-  const addressPrices = await fetchPricesByAddress(unknownAddrs, chain)
+  // Fetch prices by address for unknown tokens, PLUS known tokens as a
+  // fallback — if by-symbol ever fails again, majors still get DEX prices
+  // instead of silently pricing to $0 and being filtered as spam.
+  const addressLookups = [
+    ...unknownTokens.map(t => t.tokenAddress),
+    ...knownTokens.map(t => t.tokenAddress),
+  ]
+  const addressPrices = await fetchPricesByAddress(addressLookups, chain)
 
   // Step 4: Build results
   const stranded: StrandedToken[] = withMetadata.map(token => {
     let priceUsd = 0
 
     if (SYMBOL_MAP[token.tokenAddress]) {
-      // Known token — use symbol price
+      // Known token — symbol price (CEX+DEX), falling back to address price (DEX)
       const sym = SYMBOL_MAP[token.tokenAddress].toUpperCase()
-      priceUsd  = symbolPrices[sym] ?? 0
+      priceUsd  = symbolPrices[sym] || addressPrices[token.tokenAddress] || 0
     } else {
       // Unknown token — use address price
       priceUsd = addressPrices[token.tokenAddress] ?? 0
