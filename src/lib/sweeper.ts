@@ -64,31 +64,45 @@ function getApiKey(): string {
   return process.env.ALCHEMY_API_KEY!
 }
 
-// ── Step 1: All ERC-20 balances
+// ── Step 1: All ERC-20 balances — PAGINATED.
+// alchemy_getTokenBalances returns ~100 tokens per page ordered by contract
+// address. Contracts like USDC hold hundreds of dust tokens, so without
+// following pageKey, anything above ~0x0f... (USDT at 0xdac1..., DAI at
+// 0x6b17...) is never even discovered.
 async function getAllTokenBalances(
   address: string,
   chain: Chain
 ): Promise<Array<{ contractAddress: string; tokenBalance: string }>> {
   const rpc = getRpcUrl(chain)
-  try {
-    const res = await fetch(rpc, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 1,
-        method:  'alchemy_getTokenBalances',
-        params:  [address, 'erc20'],
-      }),
-    })
-    const data = await res.json()
-    if (!data.result?.tokenBalances) return []
-    return data.result.tokenBalances.filter(
-      (t: { tokenBalance: string | null }) => {
-        if (!t.tokenBalance) return false
-        try { return BigInt(t.tokenBalance) > 0n } catch { return false }
+  const all: Array<{ contractAddress: string; tokenBalance: string }> = []
+  let pageKey: string | undefined
+  const MAX_PAGES = 20 // up to ~2000 token contracts
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    try {
+      const res = await fetch(rpc, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method:  'alchemy_getTokenBalances',
+          params:  pageKey ? [address, 'erc20', { pageKey }] : [address, 'erc20'],
+        }),
+      })
+      const data = await res.json()
+      const balances = data.result?.tokenBalances
+      if (!balances) break
+
+      for (const t of balances) {
+        if (!t.tokenBalance) continue
+        try { if (BigInt(t.tokenBalance) > 0n) all.push(t) } catch { /* skip */ }
       }
-    )
-  } catch { return [] }
+
+      pageKey = data.result.pageKey
+      if (!pageKey) break
+    } catch { break }
+  }
+  return all
 }
 
 // ── Step 2: Token metadata
@@ -165,8 +179,14 @@ async function fetchPricesByAddress(
   const network = ALCHEMY_NETWORK[chain]
   const prices: Record<string, number> = {}
 
+  // Build all 25-address batches, then run them with a concurrency pool
+  // of 5 — hundreds of tokens must price within the function timeout.
+  const batches: string[][] = []
   for (let i = 0; i < tokenAddresses.length; i += 25) {
-    const chunk     = tokenAddresses.slice(i, i + 25)
+    batches.push(tokenAddresses.slice(i, i + 25))
+  }
+
+  const runBatch = async (chunk: string[]) => {
     const addresses = chunk.map(addr => ({ network, address: addr }))
     try {
       const res = await fetch(
@@ -177,9 +197,9 @@ async function fetchPricesByAddress(
           body: JSON.stringify({ addresses }),
         }
       )
-      if (!res.ok) continue
+      if (!res.ok) return
       const data = await res.json()
-      if (!data.data) continue
+      if (!data.data) return
       for (const item of data.data) {
         if (item.error) continue
         const price = item.prices?.[0]?.value
@@ -188,6 +208,11 @@ async function fetchPricesByAddress(
         }
       }
     } catch { /* continue */ }
+  }
+
+  const POOL = 5
+  for (let i = 0; i < batches.length; i += POOL) {
+    await Promise.allSettled(batches.slice(i, i + POOL).map(runBatch))
   }
   return prices
 }
@@ -217,78 +242,66 @@ export async function sweepTokenBalances(
   const balances = await getAllTokenBalances(address, chain)
   if (balances.length === 0) return []
 
-  // Step 2: Metadata in parallel batches
+  // Step 2: Price FIRST, metadata second.
+  // With pagination we may discover hundreds of tokens — fetching metadata
+  // for all of them would blow the function timeout. Prices identify the
+  // handful with real value; metadata is then fetched only for those.
+  const addrs = balances.map(b => b.contractAddress.toLowerCase())
+
+  const knownAddrs   = addrs.filter(a => SYMBOL_MAP[a])
+  const knownSymbols = knownAddrs.map(a => SYMBOL_MAP[a])
+
+  const [symbolPrices, addressPrices] = await Promise.all([
+    fetchPricesBySymbol(knownSymbols),
+    fetchPricesByAddress(addrs, chain), // all addresses — known ones double as fallback
+  ])
+
+  const priceFor = (addr: string): number => {
+    if (SYMBOL_MAP[addr]) {
+      const sym = SYMBOL_MAP[addr].toUpperCase()
+      return symbolPrices[sym] || addressPrices[addr] || 0
+    }
+    return addressPrices[addr] || 0
+  }
+
+  // Step 3: Keep only tokens with a real price, then fetch their metadata
+  const priced = balances
+    .map(b => ({
+      tokenAddress: b.contractAddress.toLowerCase(),
+      rawBalance:   b.tokenBalance,
+      priceUsd:     priceFor(b.contractAddress.toLowerCase()),
+    }))
+    .filter(t => t.priceUsd > 0)
+
+  if (priced.length === 0) return []
+
   const withMetadata: Array<{
     tokenAddress: string
     rawBalance:   string
+    priceUsd:     number
     name:         string
     symbol:       string
     decimals:     number
   }> = []
 
-  for (let i = 0; i < balances.length; i += 10) {
-    const batch   = balances.slice(i, i + 10)
+  for (let i = 0; i < priced.length; i += 10) {
+    const batch   = priced.slice(i, i + 10)
     const results = await Promise.allSettled(
-      batch.map(b => getTokenMetadata(b.contractAddress, chain))
+      batch.map(t => getTokenMetadata(t.tokenAddress, chain))
     )
     for (let j = 0; j < batch.length; j++) {
       const meta = results[j]
       if (meta.status === 'fulfilled' && meta.value) {
-        withMetadata.push({
-          tokenAddress: batch[j].contractAddress.toLowerCase(),
-          rawBalance:   batch[j].tokenBalance,
-          name:         meta.value.name,
-          symbol:       meta.value.symbol,
-          decimals:     meta.value.decimals,
-        })
+        withMetadata.push({ ...batch[j], ...meta.value })
       }
     }
   }
 
-  if (withMetadata.length === 0) return []
-
-  // Step 3: Hybrid pricing
-  // Split tokens into: known (use by-symbol) and unknown (use by-address)
-  const knownTokens:   typeof withMetadata = []
-  const unknownTokens: typeof withMetadata = []
-
-  for (const token of withMetadata) {
-    if (SYMBOL_MAP[token.tokenAddress]) {
-      knownTokens.push(token)
-    } else {
-      unknownTokens.push(token)
-    }
-  }
-
-  // Fetch prices for known tokens by symbol
-  const knownSymbols  = knownTokens.map(t => SYMBOL_MAP[t.tokenAddress])
-  const symbolPrices  = await fetchPricesBySymbol(knownSymbols)
-
-  // Fetch prices by address for unknown tokens, PLUS known tokens as a
-  // fallback — if by-symbol ever fails again, majors still get DEX prices
-  // instead of silently pricing to $0 and being filtered as spam.
-  const addressLookups = [
-    ...unknownTokens.map(t => t.tokenAddress),
-    ...knownTokens.map(t => t.tokenAddress),
-  ]
-  const addressPrices = await fetchPricesByAddress(addressLookups, chain)
-
   // Step 4: Build results
   const stranded: StrandedToken[] = withMetadata.map(token => {
-    let priceUsd = 0
-
-    if (SYMBOL_MAP[token.tokenAddress]) {
-      // Known token — symbol price (CEX+DEX), falling back to address price (DEX)
-      const sym = SYMBOL_MAP[token.tokenAddress].toUpperCase()
-      priceUsd  = symbolPrices[sym] || addressPrices[token.tokenAddress] || 0
-    } else {
-      // Unknown token — use address price
-      priceUsd = addressPrices[token.tokenAddress] ?? 0
-    }
-
     const balanceFormatted = formatBalance(token.rawBalance, token.decimals)
     const balanceNum       = parseFloat(balanceFormatted) || 0
-    const valueUsd         = balanceNum * priceUsd
+    const valueUsd         = balanceNum * token.priceUsd
 
     return {
       tokenAddress:    token.tokenAddress,
@@ -296,7 +309,7 @@ export async function sweepTokenBalances(
       tokenSymbol:     token.symbol,
       balance:         BigInt(token.rawBalance).toString(),
       balanceFormatted,
-      priceUsd,
+      priceUsd:        token.priceUsd,
       valueUsd,
     }
   })

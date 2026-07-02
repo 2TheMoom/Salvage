@@ -7,6 +7,9 @@ import { Chain, ScanApiResponse } from '@/types'
 // Never cache anything about this route — every scan must be live.
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
+// Large contracts (e.g. USDC) hold hundreds of dust tokens — paginated
+// discovery + pricing needs more than the default 10s.
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
