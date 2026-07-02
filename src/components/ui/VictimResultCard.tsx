@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { VictimScanResult, VictimFinding } from '@/types'
 import { truncateAddress } from '@/lib/utils'
+import RecoveryClaimPanel from '@/components/ui/RecoveryClaimPanel'
 
 interface VictimResultCardProps {
   result: VictimScanResult
@@ -59,7 +60,7 @@ I'd be grateful if you could help return these funds. Happy to verify ownership 
 Found via Salvage — salvage-olive.vercel.app`
 }
 
-function FindingRow({ finding, chain }: { finding: VictimFinding; chain: string }) {
+function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; chain: string; victimWallet: string }) {
   const [copied, setCopied] = useState(false)
   const chip = statusChip(finding)
 
@@ -172,6 +173,14 @@ function FindingRow({ finding, chain }: { finding: VictimFinding; chain: string 
           View Tx ↗
         </a>
       </div>
+
+      {(finding.triageStatus === 'recoverable' || finding.triageStatus === 'needs_action') && (
+        <RecoveryClaimPanel
+          finding={finding}
+          victimWallet={victimWallet}
+          chain={chain as 'eth' | 'base'}
+        />
+      )}
     </div>
   )
 }
@@ -225,7 +234,7 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
       <div style={{ padding: '16px 26px' }}>
         {hasFindings ? (
           result.findings.map((f, i) => (
-            <FindingRow key={`${f.txHash}-${i}`} finding={f} chain={result.chain} />
+            <FindingRow key={`${f.txHash}-${i}`} finding={f} chain={result.chain} victimWallet={result.wallet} />
           ))
         ) : (
           <div style={{
