@@ -1,3 +1,4 @@
 {
-  "SalvageFeeModule#SalvageFeeContract": "0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27"
+  "SalvageFeeModule#SalvageFeeContract": "0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27",
+  "SalvageRecoveryRouter#SalvageRecoveryRouter": "0x2240792d1A9D964d238bD693fCb09586B10faEdf"
 }

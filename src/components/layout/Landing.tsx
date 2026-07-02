@@ -198,6 +198,14 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
       <div className="l-cta">
         <h2>Start scanning now.</h2>
         <p>No signup. No KYC. Connect a wallet and start finding stranded tokens.</p>
+        <p style={{
+          fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+          opacity: 0.75, marginTop: '6px',
+        }}>
+          Sent tokens to a contract by mistake? Scan your own wallet — recovery settles
+          on-chain: 3% protocol + 7% finder when a finder brokers it · 5% protocol when
+          you recover your own. Non-custodial, enforced by contract.
+        </p>
         <button className="btn-cta-white" onClick={onOpenDashboard}>Open Dashboard</button>
         <button className="btn-cta-outline">View Leaderboard</button>
       </div>
@@ -205,12 +213,44 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
       {/* Footer */}
       <footer className="l-footer">
         <div className="l-footer-left">
-          Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2 + CoinGecko
+          <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '10px' }}>
+            {/* GitHub */}
+            <a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer"
+               title="GitHub — 2TheMoom/Salvage" style={{ opacity: 0.85, display: 'flex' }}>
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-label="GitHub">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+              </svg>
+            </a>
+            {/* X — Salvage */}
+            <a href="https://x.com/Salvage_xyz" target="_blank" rel="noopener noreferrer"
+               title="X — @Salvage_xyz" style={{ opacity: 0.85, display: 'flex' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-label="X">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+            {/* Gmail */}
+            <a href="mailto:gethelp.salvage@gmail.com"
+               title="Email — gethelp.salvage@gmail.com" style={{ opacity: 0.85, display: 'flex' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-label="Gmail">
+                <path d="M22 6.5v11a1.5 1.5 0 0 1-1.5 1.5H19V9.62l-7 4.9-7-4.9V19H3.5A1.5 1.5 0 0 1 2 17.5v-11C2 5.4 2.9 4.5 4 4.5h.5L12 9.75 19.5 4.5h.5c1.1 0 2 .9 2 2z" fill="#EA4335"/>
+                <path d="M5 19V9.62l7 4.9 7-4.9V19H5z" fill="#fff" fillOpacity="0.9"/>
+              </svg>
+            </a>
+            {/* Farcaster */}
+            <a href="https://warpcast.com/salvage-xyz" target="_blank" rel="noopener noreferrer"
+               title="Farcaster — @Salvage-xyz" style={{ opacity: 0.85, display: 'flex' }}>
+              <svg width="17" height="17" viewBox="0 0 1000 1000" fill="#855DCD" aria-label="Farcaster">
+                <path d="M257 156h486v688h-71V529h-.7c-7.8-87-81-155-170.3-155s-162.5 68-170.3 155h-.7v315h-71V156z"/>
+                <path d="M128 253l29 98h25v395c-12.5 0-22.6 10.1-22.6 22.6V795h-4.5c-12.5 0-22.6 10.1-22.6 22.6V844h253v-26.4c0-12.5-10.1-22.6-22.6-22.6h-4.5v-26.4c0-12.5-10.1-22.6-22.6-22.6h-27V253H128zM679 746c-12.5 0-22.6 10.1-22.6 22.6V795h-4.5c-12.5 0-22.6 10.1-22.6 22.6V844h253v-26.4c0-12.5-10.1-22.6-22.6-22.6h-4.5v-26.4c0-12.5-10.1-22.6-22.6-22.6V351h25l29-98H706v493h-27z"/>
+              </svg>
+            </a>
+          </div>
         </div>
         <div className="l-footer-right">
           <a href="#">Docs</a>
           <a href="#">Fee Contract</a>
-          <a href="https://x.com/salvagexyz" target="_blank" rel="noopener noreferrer">@salvagexyz</a>
+          <a href="https://x.com/Salvage_xyz" target="_blank" rel="noopener noreferrer">@Salvage_xyz</a>
           <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer" className="credit">
             Built by Abu Olumi ↗
           </a>

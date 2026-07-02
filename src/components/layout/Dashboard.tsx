@@ -49,6 +49,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
   const [lbLoading, setLbLoading]     = useState(false)
+  const [lbExpanded, setLbExpanded]   = useState(false)
   const [stats, setStats]             = useState<{
     totalStrandedUsd: number
     recoverableUsd: number
@@ -368,7 +369,8 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                 No entries yet.<br />Scan contracts to populate.
               </div>
             ) : (
-              leaderboard.map((row, i) => (
+              <>
+                {(lbExpanded ? leaderboard : leaderboard.slice(0, 5)).map((row, i) => (
                 <div
                   key={row.id}
                   className="lb-row"
@@ -395,7 +397,24 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                     </div>
                   </div>
                 </div>
-              ))
+              ))}
+                {leaderboard.length > 5 && (
+                  <button
+                    onClick={() => setLbExpanded(v => !v)}
+                    style={{
+                      width: '100%', padding: '9px 14px', marginTop: '4px',
+                      borderRadius: '7px', border: '1px dashed var(--border)',
+                      background: 'transparent', cursor: 'pointer',
+                      fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
+                      fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-2)',
+                    }}
+                  >
+                    {lbExpanded
+                      ? '▴ Show top 5 only'
+                      : `▾ Show all ${leaderboard.length} contracts (+${leaderboard.length - 5} more)`}
+                  </button>
+                )}
+              </>
             )}
           </div>
 

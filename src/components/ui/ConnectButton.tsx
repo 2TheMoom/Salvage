@@ -34,13 +34,22 @@ export default function ConnectButton({
     ? address.toLowerCase() === FOUNDER_ADDRESS
     : false
 
-  // Reset verification when wallet changes
+  // Restore verification from localStorage (7-day validity) — a refresh or
+  // landing↔dashboard navigation must never demand a fresh signature.
   useEffect(() => {
-    setVerified(false)
     setSignError(null)
     if (isConnected && address) {
-      // Auto-trigger sign on connect
+      const key   = `salvage_verified_${address.toLowerCase()}`
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+      if (saved && Date.now() - parseInt(saved, 10) < 7 * 24 * 60 * 60 * 1000) {
+        setVerified(true)
+        return
+      }
+      setVerified(false)
+      // Auto-trigger sign on first connect only
       handleSign()
+    } else {
+      setVerified(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, isConnected])
@@ -63,6 +72,12 @@ export default function ConnectButton({
         onSuccess: () => {
           setVerified(true)
           setVerifying(false)
+          if (address) {
+            localStorage.setItem(
+              `salvage_verified_${address.toLowerCase()}`,
+              Date.now().toString()
+            )
+          }
         },
         onError: (err) => {
           setVerifying(false)
