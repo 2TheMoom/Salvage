@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import SonarLogo from '@/components/ui/SonarLogo'
 
 interface LandingProps {
@@ -7,6 +8,23 @@ interface LandingProps {
 }
 
 export default function Landing({ onOpenDashboard }: LandingProps) {
+  const [stats, setStats] = useState<{
+    totalStrandedUsd: number
+    recoverableUsd: number
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => { if (d.success) setStats(d.stats) })
+      .catch(() => {})
+  }, [])
+
+  const fmtUsd = (v: number) =>
+    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(2)}M`
+    : v >= 1_000   ? `$${(v / 1_000).toFixed(1)}K`
+    : `$${v.toFixed(0)}`
+
   return (
     <div id="landing">
       {/* Nav */}
@@ -155,13 +173,13 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         <div className="l-stats-inner">
           <div className="l-stat">
             <div className="l-stat-label">Total Stranded · ETH + Base</div>
-            <div className="l-stat-num">—</div>
-            <div className="l-stat-sub">Indexer live in M3</div>
+            <div className="l-stat-num">{stats ? fmtUsd(stats.totalStrandedUsd) : '—'}</div>
+            <div className="l-stat-sub">{stats ? 'Live from scanned contracts' : 'Loading…'}</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">Recoverable Value</div>
-            <div className="l-stat-num accent">—</div>
-            <div className="l-stat-sub">Indexer live in M3</div>
+            <div className="l-stat-num accent">{stats ? fmtUsd(stats.recoverableUsd) : '—'}</div>
+            <div className="l-stat-sub">{stats ? 'With a rescue path today' : 'Loading…'}</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">All-Time Recovered</div>

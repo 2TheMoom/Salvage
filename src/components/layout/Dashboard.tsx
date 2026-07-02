@@ -49,6 +49,20 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
   const [lbLoading, setLbLoading]     = useState(false)
+  const [stats, setStats]             = useState<{
+    totalStrandedUsd: number
+    recoverableUsd: number
+    recoverableCount: number
+    contractsIndexed: number
+  } | null>(null)
+
+  // Fetch live stats on mount
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => { if (d.success) setStats(d.stats) })
+      .catch(() => {})
+  }, [])
 
   const isFounder = address
     ? address.toLowerCase() === FOUNDER_ADDRESS
@@ -156,13 +170,17 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
       <div className="d-stats">
         <div className="d-stat">
           <div className="d-stat-label">Total Stranded · ETH+Base</div>
-          <div className="d-stat-num">—</div>
-          <div className="d-stat-sub">Indexer live in M3</div>
+          <div className="d-stat-num">{stats ? formatUsdShort(stats.totalStrandedUsd) : '—'}</div>
+          <div className="d-stat-sub">
+            {stats ? `Across ${stats.contractsIndexed} indexed contracts` : 'Loading…'}
+          </div>
         </div>
         <div className="d-stat">
           <div className="d-stat-label">Recoverable Now</div>
-          <div className="d-stat-num accent">—</div>
-          <div className="d-stat-sub">Indexer live in M3</div>
+          <div className="d-stat-num accent">{stats ? formatUsdShort(stats.recoverableUsd) : '—'}</div>
+          <div className="d-stat-sub">
+            {stats ? `${stats.recoverableCount} contract${stats.recoverableCount === 1 ? '' : 's'} with a rescue path` : 'Loading…'}
+          </div>
         </div>
         <div className="d-stat">
           <div className="d-stat-label">All-Time Recovered</div>

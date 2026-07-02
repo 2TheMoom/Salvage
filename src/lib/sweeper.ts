@@ -181,22 +181,31 @@ async function fetchPricesBySymbol(
     // A comma-joined list is rejected and returns no prices.
     const params = new URLSearchParams()
     chunk.forEach(s => params.append('symbols', s))
-    try {
-      const res = await fetch(
-        `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?${params.toString()}`,
-        { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
-      )
-      if (!res.ok) continue
-      const data = await res.json()
-      if (!data.data) continue
-      for (const item of data.data) {
-        if (item.error) continue
-        const price = item.prices?.[0]?.value
-        if (price && item.symbol) {
-          prices[item.symbol.toUpperCase()] = parseFloat(price)
+    // Retry with backoff — bursts of scans can hit Alchemy throughput
+    // limits (429). A throttled pricing call must never zero out majors.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?${params.toString()}`,
+          { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
+        )
+        if (!res.ok) {
+          await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
+          continue
         }
+        const data = await res.json()
+        for (const item of data.data || []) {
+          if (item.error) continue
+          const price = item.prices?.[0]?.value
+          if (price && item.symbol) {
+            prices[item.symbol.toUpperCase()] = parseFloat(price)
+          }
+        }
+        break
+      } catch {
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
       }
-    } catch { /* continue */ }
+    }
   }
   return prices
 }
@@ -220,29 +229,36 @@ export async function fetchPricesByAddress(
 
   const runBatch = async (chunk: string[]) => {
     const addresses = chunk.map(addr => ({ network, address: addr }))
-    try {
-      const res = await fetch(
-        `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-address`,
-        {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ addresses }),
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-address`,
+          {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addresses }),
+          }
+        )
+        if (!res.ok) {
+          await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
+          continue
         }
-      )
-      if (!res.ok) return
-      const data = await res.json()
-      if (!data.data) return
-      for (const item of data.data) {
-        if (item.error) continue
-        const price = item.prices?.[0]?.value
-        if (price && item.address) {
-          prices[item.address.toLowerCase()] = parseFloat(price)
+        const data = await res.json()
+        for (const item of data.data || []) {
+          if (item.error) continue
+          const price = item.prices?.[0]?.value
+          if (price && item.address) {
+            prices[item.address.toLowerCase()] = parseFloat(price)
+          }
         }
+        return
+      } catch {
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
       }
-    } catch { /* continue */ }
+    }
   }
 
-  const POOL = 5
+  const POOL = 3
   for (let i = 0; i < batches.length; i += POOL) {
     await Promise.allSettled(batches.slice(i, i + POOL).map(runBatch))
   }
@@ -361,9 +377,14 @@ export async function sweepTokenBalances(
   })
 
   // Step 5: Filter out $0 value tokens (spam), sort by value desc
-  return stranded
+  const final = stranded
     .filter(t => t.valueUsd > 0)
     .sort((a, b) => b.valueUsd - a.valueUsd)
+
+  console.log(
+    `[sweep] ${chain}:${address} → discovered=${balances.length} priced=${priced.length} verified=${withMetadata.length} final=${final.length}`
+  )
+  return final
 }
 
 // ── Totals
