@@ -34,6 +34,7 @@ interface DashboardProps {
 function formatUsdShort(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
   if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`
+  if (value > 0 && value < 1) return `$${value.toFixed(2)}`
   return `$${value.toFixed(0)}`
 }
 
@@ -160,11 +161,9 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
           <SonarLogo size={28} variant="white" showWordmark wordmarkSize="1.2rem" />
         </div>
         <ul className="d-nav-links">
-          <li><a href="#" className="on">Scanner</a></li>
-          <li><a href="#">Leaderboard</a></li>
-          <li><a href="#">My Finds</a></li>
-          <li><a href="#">Recover</a></li>
-          <li><a href="#">Claim Fee</a></li>
+          <li><a href="#" className="on" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Scanner</a></li>
+          <li><a href="#leaderboard" onClick={(e) => { e.preventDefault(); document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' }) }}>Leaderboard</a></li>
+          <li><a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a></li>
         </ul>
         <div className="d-nav-right">
           <ConnectButton variant="dashboard" />
@@ -342,7 +341,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
         <div className="d-sidebar">
 
           {/* Leaderboard */}
-          <div className="s-card">
+          <div className="s-card" id="leaderboard">
             <div className="s-head">
               <div>
                 <div className="s-title">Stranded Leaderboard</div>
@@ -445,13 +444,13 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                       {isFounder ? '👑 Founder wallet' : 'Wallet'} · {connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}
                     </div>
                   </div>
-                  <div className="e-row"><span className="e-key">Protocol cut (3%)</span><span className="e-val">$0</span></div>
-                  <div className="e-row"><span className="e-key">Your own finds (7%)</span><span className="e-val">$0</span></div>
+                  <div className="e-row"><span className="e-key">Protocol cut</span><span className="e-val">{isFounder && stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span></div>
+                  <div className="e-row"><span className="e-key">Recoveries settled</span><span className="e-val">{isFounder && stats ? String(stats.recoveredCount) : '0'}</span></div>
                   <div className="e-row"><span className="e-key">Recovery guide sales</span><span className="e-val">$0</span></div>
                   <div className="e-div" />
                   <div className="e-total">
                     <span className="e-total-key">Total earned</span>
-                    <span className="e-total-val">$0</span>
+                    <span className="e-total-val">{isFounder && stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span>
                   </div>
                 </>
               ) : (

@@ -11,6 +11,9 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
   const [stats, setStats] = useState<{
     totalStrandedUsd: number
     recoverableUsd: number
+    recoveredAllTime: number
+    protocolFeesUsd: number
+    recoveredCount: number
   } | null>(null)
 
   useEffect(() => {
@@ -23,6 +26,7 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
   const fmtUsd = (v: number) =>
     v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(2)}M`
     : v >= 1_000   ? `$${(v / 1_000).toFixed(1)}K`
+    : v > 0 && v < 1 ? `$${v.toFixed(2)}`
     : `$${v.toFixed(0)}`
 
   return (
@@ -183,13 +187,13 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
           </div>
           <div className="l-stat">
             <div className="l-stat-label">All-Time Recovered</div>
-            <div className="l-stat-num">$0</div>
-            <div className="l-stat-sub">No recoveries yet</div>
+            <div className="l-stat-num">{stats ? fmtUsd(stats.recoveredAllTime) : '—'}</div>
+            <div className="l-stat-sub">{stats && stats.recoveredCount > 0 ? `${stats.recoveredCount} recovery settled on-chain` : 'No recoveries yet'}</div>
           </div>
           <div className="l-stat">
             <div className="l-stat-label">Protocol Fees Earned</div>
-            <div className="l-stat-num accent">$0</div>
-            <div className="l-stat-sub">3% cut · on-chain to founder</div>
+            <div className="l-stat-num accent">{stats ? fmtUsd(stats.protocolFeesUsd) : '—'}</div>
+            <div className="l-stat-sub">3–5% cut · on-chain to founder</div>
           </div>
         </div>
       </div>
