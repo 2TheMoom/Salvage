@@ -36,6 +36,34 @@ Recovery never depends on trusting anyone:
 | Victim-initiated | 95% | — | 5% |
 | Finder-brokered | 90% | 7% | 3% |
 
+## Live proof — a real recovery on Base mainnet
+
+This isn't hypothetical. Here is a complete recovery executed through Salvage on Base, every step verifiable on-chain:
+
+| Step | Transaction |
+|---|---|
+| 1. **The loss** — 1 DAI sent directly to the cbBTC token contract | [`0x7da3…a4c1`](https://basescan.org/tx/0x7da304788c1fd9b2f02e8a313ea9c0881e5d34d28cbdc9943b367139535ca4c1) |
+| 2. **Claim registered** — victim signed an EIP-712 claim; router assigned deposit address [`0x3967…EFa3`](https://basescan.org/address/0x3967BfCB4A04173b9f5B735831D0D38c0549EFa3) | [`0xd202…1ae9`](https://basescan.org/tx/0xd20241abf6f4bdddd91dbd72190a9a5037cd92920689e677a7a0265118601ae9) |
+| 3. **Receiver funded** — 1 DAI rescued into the claim's deposit address | [`0x4654…1531`](https://basescan.org/tx/0x4654e00d88dff48ab91b7a4b9388e75e5d61fc8121b82bd6ab889acb702b1531) |
+| 4. **Settlement** — permissionless `settle()`: **0.95 DAI → victim, 0.05 DAI → protocol**, exact 95/5 split in one transaction | [`0x7c6b…b51b`](https://basescan.org/tx/0x7c6ba90f73bec7accf15ec8f92bbf92fbd0e509685d5aa819ca26aca7c05b51b) |
+
+Claim ID: `0xa0c54e183faab63c4ea488fd81ef24a61d190d43c6c063684c1a8a6e84878666`
+
+## How a recovery flows
+
+```mermaid
+flowchart TD
+    A[🔍 Scan\ncontract or wallet] --> B{Triage:\nrecoverable?}
+    B -- "rescue function + owner found" --> C[✍️ Victim signs\nEIP-712 RecoveryClaim]
+    B -- "finder discovered it" --> F[🕵️ Finder registers find\noff-chain · 7% priority locked]
+    F --> C
+    C --> D[⛓️ registerClaim on router\nclaim gets deterministic\nCREATE2 deposit address]
+    D --> E[📬 Owner rescues stranded tokens\nto the claim's deposit address]
+    E --> G[⚖️ settle — permissionless\nsweeps receiver, splits by\nschedule frozen at registration]
+    G --> H[💰 Victim 95%\n·\nProtocol 5%]
+    G --> I[💰 Victim 90% · Finder 7%\n·\nProtocol 3%]
+```
+
 ## Deployed contracts
 
 | Contract | Ethereum | Base |
