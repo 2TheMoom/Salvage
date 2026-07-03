@@ -8,7 +8,7 @@ const ALCHEMY_NETWORK: Record<Chain, string> = {
 // ── Known symbol map for major tokens
 // These tokens are priced by symbol (CEX+DEX) on Alchemy — far more reliable
 // for mainstream assets than by-address (DEX only)
-const SYMBOL_MAP: Record<string, string> = {
+export const SYMBOL_MAP: Record<string, string> = {
   // ETH ecosystem
   '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 'USDC',
   '0xdac17f958d2ee523a2206206994597c13d831ec7': 'USDT',

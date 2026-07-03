@@ -2,7 +2,7 @@
 
 **Find and recover tokens stranded in smart contracts.**
 
-Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it. Salvage makes these funds findable and recoverable.
+Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)). Salvage makes these funds findable and recoverable.
 
 🔗 **Live app:** [salvage-olive.vercel.app](https://salvage-olive.vercel.app)
 🐦 **X:** [@Salvage_xyz](https://x.com/Salvage_xyz) · **Farcaster:** [@Salvage-xyz](https://warpcast.com/salvage-xyz)
@@ -94,6 +94,14 @@ npm install
 npx hardhat compile
 npx hardhat test
 ```
+
+## Roadmap
+
+- **v1.1 — Owner Execution:** authorized contract owners execute supported recovery functions directly from Salvage. The app detects the rescue method in the ABI, prefills parameters (token, claim receiver, amount), shows the decoded call + raw calldata, and prepares the transaction for the owner to review and sign — no Etherscan spelunking, no ABI decoding.
+- **v1.2 — Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
+- **Claims pipeline dashboard:** registered → funded → settled tracking, with live "all-time recovered" stats.
+- **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
+- **Further out:** recovery APIs for wallets and explorers, protocol support portals, notifications for newly stranded assets.
 
 ## An honest note on recovery
 

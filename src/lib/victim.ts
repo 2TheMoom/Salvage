@@ -1,6 +1,6 @@
 import { Chain, VictimFinding, VictimScanResult, TriageStatus } from '@/types'
 import { scanContract, detectRescueFunction, fetchAbi } from '@/lib/scanner'
-import { fetchPricesByAddress, getTokenMetadata, formatBalance } from '@/lib/sweeper'
+import { fetchPricesByAddress, getTokenMetadata, formatBalance, SYMBOL_MAP } from '@/lib/sweeper'
 
 // ── Victim scan: find tokens a wallet mistakenly sent to contract addresses.
 //
@@ -120,9 +120,10 @@ export async function scanVictimWallet(
   const transfers = await getOutgoingTransfers(wallet, chain)
 
   // Step 2: candidate set — recipient is a token contract the wallet has
-  // interacted with, or the transferred token's own contract. Free pre-filter;
-  // Step 3 verifies precisely on-chain.
-  const tokenContracts = new Set<string>()
+  // interacted with, the transferred token's own contract, or any KNOWN
+  // major token contract (SYMBOL_MAP). Without the known-token seed, a
+  // send to a token the wallet never transferred before would be invisible.
+  const tokenContracts = new Set<string>(Object.keys(SYMBOL_MAP))
   for (const t of transfers) {
     const addr = t.rawContract?.address?.toLowerCase()
     if (addr) tokenContracts.add(addr)
