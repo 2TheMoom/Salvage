@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import {
-  useAccount, useSignTypedData, useWriteContract,
+  useAccount, useSignTypedData, useSignMessage, useWriteContract,
   useReadContract, useSwitchChain,
 } from 'wagmi'
 import { keccak256, encodeAbiParameters, zeroAddress } from 'viem'
@@ -29,6 +29,56 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
   const { address, isConnected } = useAccount()
   const { switchChainAsync }     = useSwitchChain()
   const { signTypedDataAsync }   = useSignTypedData()
+  const { signMessageAsync }     = useSignMessage()
+
+  const [findState, setFindState] = useState<'idle' | 'signing' | 'registered' | 'taken' | 'error'>('idle')
+  const [findMsg, setFindMsg]     = useState<string | null>(null)
+
+  // Finder registration — off-chain, locks in the 7% finder priority
+  // with a signed agreement. No victim signature needed at this stage.
+  const handleRegisterFind = async () => {
+    if (!address) return
+    setFindMsg(null)
+    try {
+      setFindState('signing')
+      const message =
+        `Salvage finder registration\n\n` +
+        `I am registering a discovered stranded find and agree to the finder fee schedule ` +
+        `(7% finder, 3% protocol) on successful recovery.\n\n` +
+        `Token: ${finding.tokenAddress}\n` +
+        `Loss tx: ${finding.txHash}\n` +
+        `Victim wallet: ${victimWallet}\n` +
+        `Finder: ${address}`
+
+      const signature = await signMessageAsync({ message })
+
+      const res = await fetch('/api/finds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chain,
+          victimWallet,
+          tokenAddress:      finding.tokenAddress,
+          tokenSymbol:       finding.tokenSymbol,
+          lossTxHash:        finding.txHash,
+          recipientContract: finding.recipientContract,
+          valueUsd:          finding.valueUsd,
+          finderAddress:     address,
+          signature,
+          message,
+        }),
+      })
+      const data = await res.json()
+      if (data.success)       setFindState('registered')
+      else if (res.status === 409) { setFindState('taken'); setFindMsg(data.error) }
+      else                    { setFindState('error'); setFindMsg(data.error || 'Registration failed.') }
+    } catch (err: unknown) {
+      const m = err instanceof Error ? err.message : ''
+      setFindState('error')
+      setFindMsg(m.includes('reject') || m.includes('denied') ? 'Signature rejected.' : 'Registration failed.')
+    }
+  }
+
   const { writeContractAsync }   = useWriteContract()
 
   const [state, setState]       = useState<PanelState>('idle')
@@ -224,9 +274,38 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               Connect the wallet that sent this transfer to start recovery.
             </div>
           ) : !isVictimWallet ? (
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--amber)' }}>
-              Connected wallet doesn&apos;t match the sender ({victimWallet.slice(0, 6)}…{victimWallet.slice(-4)}).
-              Switch wallets to claim this recovery.
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.64rem',
+                color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '8px',
+              }}>
+                You&apos;re not the sender ({victimWallet.slice(0, 6)}…{victimWallet.slice(-4)}) —
+                but you found this. Register the find to lock in your 7% finder fee before
+                reaching out to them. First finder wins.
+              </div>
+              {findState === 'registered' ? (
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--green)' }}>
+                  ✓ Find registered — your finder priority is locked in. Now reach the sender;
+                  when they sign the claim, your 7% routes automatically.
+                </div>
+              ) : findState === 'taken' ? (
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--amber)' }}>
+                  {findMsg}
+                </div>
+              ) : (
+                <button
+                  onClick={handleRegisterFind}
+                  disabled={findState === 'signing'}
+                  style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
+                >
+                  {findState === 'signing' ? 'Sign the agreement in your wallet…' : 'Register This Find'}
+                </button>
+              )}
+              {findMsg && findState === 'error' && (
+                <div style={{ marginTop: '6px', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--crimson)' }}>
+                  {findMsg}
+                </div>
+              )}
             </div>
           ) : (
             <button

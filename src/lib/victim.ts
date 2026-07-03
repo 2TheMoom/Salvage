@@ -74,18 +74,32 @@ async function getOutgoingTransfers(wallet: string, chain: Chain): Promise<RawTr
 }
 
 // Confirm the mistake shape: tx was a DIRECT transfer() call on the token.
+// Confirm the mistake shape: tx was a DIRECT transfer() call on the token
+// AND the recipient typed into the calldata is the flagged contract.
+// Fee-on-transfer ("tax") tokens emit a side-effect Transfer(user → token
+// contract) on every ordinary transfer. In a genuine fat-finger the user
+// literally entered the contract address as the recipient — so the calldata
+// recipient must equal the event's `to`.
 async function isDirectTransfer(
-  txHash: string, wallet: string, tokenAddress: string, chain: Chain
+  txHash: string, wallet: string, tokenAddress: string,
+  eventRecipient: string, chain: Chain
 ): Promise<boolean> {
   const tx = await rpc(getRpcUrl(chain), 'eth_getTransactionByHash', [txHash]) as {
     from?: string; to?: string; input?: string
   } | null
   if (!tx?.input || !tx.to || !tx.from) return false
-  return (
-    tx.from.toLowerCase() === wallet &&
-    tx.to.toLowerCase()   === tokenAddress &&
-    tx.input.toLowerCase().startsWith(TRANSFER_SELECTOR)
-  )
+  const input = tx.input.toLowerCase()
+  if (
+    tx.from.toLowerCase() !== wallet ||
+    tx.to.toLowerCase()   !== tokenAddress ||
+    !input.startsWith(TRANSFER_SELECTOR)
+  ) return false
+
+  // transfer(address,uint256): selector(4) + recipient(32) + amount(32).
+  // Recipient occupies hex chars 34–74 (last 20 bytes of the first word).
+  if (input.length < 74) return false
+  const calldataRecipient = '0x' + input.slice(34, 74)
+  return calldataRecipient === eventRecipient
 }
 
 // balanceOf(recipient) on the token — what the contract still holds
@@ -119,12 +133,14 @@ export async function scanVictimWallet(
     return !!to && tokenContracts.has(to)
   }).slice(0, MAX_FINDINGS)
 
-  // Step 3: verify each candidate is a DIRECT transfer() to the token contract
+  // Step 3: verify each candidate — direct transfer() whose CALLDATA
+  // recipient is the token contract (excludes tax-token side effects)
   const verified: RawTransfer[] = []
   for (const t of candidates) {
     const tokenAddr = t.rawContract?.address?.toLowerCase()
-    if (!tokenAddr) continue
-    const ok = await isDirectTransfer(t.hash, wallet, tokenAddr, chain)
+    const eventTo   = t.to?.toLowerCase()
+    if (!tokenAddr || !eventTo) continue
+    const ok = await isDirectTransfer(t.hash, wallet, tokenAddr, eventTo, chain)
     if (ok) verified.push(t)
   }
 
@@ -200,8 +216,13 @@ export async function scanVictimWallet(
     })
   }
 
-  findings.sort((a, b) => b.valueUsd - a.valueUsd)
-  const totalLostUsd = findings.reduce((s, f) => s + f.valueUsd, 0)
+  const meaningful = findings.filter(f => f.valueUsd > 0)
+  meaningful.sort((a, b) => b.valueUsd - a.valueUsd)
+  const totalLostUsd = meaningful.reduce((s, f) => s + f.valueUsd, 0)
 
-  return { wallet, chain, findings, totalLostUsd }
+  console.log(
+    `[victim] ${chain}:${wallet} → transfers=${transfers.length} candidates=${candidates.length} verified=${verified.length} kept=${meaningful.length}`
+  )
+
+  return { wallet, chain, findings: meaningful, totalLostUsd }
 }

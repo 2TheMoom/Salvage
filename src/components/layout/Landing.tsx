@@ -250,10 +250,12 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         <div className="l-footer-right">
           <a href="#">Docs</a>
           <a href="#">Fee Contract</a>
-          <a href="https://x.com/Salvage_xyz" target="_blank" rel="noopener noreferrer">@Salvage_xyz</a>
-          <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer" className="credit">
-            Built by Abu Olumi ↗
-          </a>
+          <span className="credit">
+            Built by{' '}
+            <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer">
+              Abu Olumi ↗
+            </a>
+          </span>
         </div>
       </footer>
     </div>
