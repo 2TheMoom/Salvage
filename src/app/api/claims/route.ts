@@ -64,3 +64,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to fetch claims' }, { status: 500 })
   }
 }
+export async function PATCH(req: NextRequest) {
+  try {
+    const { claimId, status, settleTx } = await req.json()
+    if (!claimId || !status || !['funded', 'settled'].includes(status)) {
+      return NextResponse.json({ success: false, error: 'Invalid update' }, { status: 400 })
+    }
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const update: Record<string, unknown> = { status }
+    if (settleTx) update.settle_tx = settleTx
+    if (status === 'settled') update.settled_at = new Date().toISOString()
+
+    const { error } = await admin
+      .from('salvage_claims')
+      .update(update)
+      .eq('claim_id', claimId)
+    if (error) throw error
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('[/api/claims PATCH] error:', err)
+    return NextResponse.json({ success: false, error: 'Failed to update claim' }, { status: 500 })
+  }
+}

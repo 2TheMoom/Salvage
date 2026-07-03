@@ -33,6 +33,8 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
 
   const [findState, setFindState] = useState<'idle' | 'signing' | 'registered' | 'taken' | 'error'>('idle')
   const [findMsg, setFindMsg]     = useState<string | null>(null)
+  const [registerTx, setRegisterTx] = useState<string | null>(null)
+  const [settleTx, setSettleTx]     = useState<string | null>(null)
 
   // Finder registration — off-chain, locks in the 7% finder priority
   // with a signed agreement. No victim signature needed at this stage.
@@ -191,6 +193,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         }),
       }).catch(() => {})
 
+      setRegisterTx(txHash)
       setState('registered')
       refetchClaim()
     } catch (err: unknown) {
@@ -208,13 +211,20 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
     try {
       await switchChainAsync({ chainId }).catch(() => {})
       setState('settling')
-      await writeContractAsync({
+      const settleHash = await writeContractAsync({
         address: routerAddress,
         abi: ROUTER_ABI,
         functionName: 'settle',
         args: [claimId],
         chainId,
       })
+      setSettleTx(settleHash)
+      // Mark settled in the claims registry (non-blocking)
+      fetch('/api/claims', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ claimId, status: 'settled', settleTx: settleHash }),
+      }).catch(() => {})
       setState('settled')
       refetchBalance()
     } catch (err: unknown) {
@@ -359,6 +369,25 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               : 'Settle Recovery'}
             </button>
           </div>
+        </div>
+      )}
+
+      {(registerTx || settleTx) && (
+        <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+          {registerTx && (
+            <a href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
+               target="_blank" rel="noopener noreferrer"
+               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--eth)' }}>
+              Registration tx ↗
+            </a>
+          )}
+          {settleTx && (
+            <a href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${settleTx}`}
+               target="_blank" rel="noopener noreferrer"
+               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--eth)' }}>
+              Settlement tx ↗
+            </a>
+          )}
         </div>
       )}
 
