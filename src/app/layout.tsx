@@ -3,22 +3,35 @@ import './globals.css'
 import Providers from '@/components/ui/Providers'
 
 export const metadata: Metadata = {
-  title: 'Salvage — What the EVM left behind',
+  metadataBase: new URL('https://salvage-olive.vercel.app'),
+  title: 'Salvage — Find and recover tokens stranded in smart contracts',
   description:
-    'Find ERC-20 tokens trapped in contracts that cannot spend them. Scan, register your find, and earn a finder\'s fee when the project recovers.',
-  keywords: ['EVM', 'stranded tokens', 'ERC-20', 'recovery', 'Ethereum', 'Base', 'DeFi'],
+    'Scan any contract or your own wallet for stranded ERC-20 tokens, then recover them fully on-chain. Non-custodial settlement. Live on Ethereum and Base.',
+  keywords: ['EVM', 'stranded tokens', 'ERC-20', 'recovery', 'Ethereum', 'Base', 'DeFi', 'smart contract recovery', 'non-custodial'],
   openGraph: {
-    title: 'Salvage — What the EVM left behind',
-    description: 'Find stranded ERC-20 tokens across Ethereum and Base. Earn a finder\'s fee.',
+    title: 'Salvage — Recover tokens stranded in smart contracts',
+    description:
+      'Scan, triage, and recover stranded tokens on-chain. Non-custodial settlement with per-claim deposit addresses. Live on Ethereum and Base.',
     url: 'https://salvage-olive.vercel.app',
     siteName: 'Salvage',
     type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Salvage — Find and recover tokens stranded in smart contracts',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Salvage — What the EVM left behind',
-    description: 'Find stranded ERC-20 tokens across Ethereum and Base.',
-    creator: '@salvagexyz',
+    title: 'Salvage — Recover tokens stranded in smart contracts',
+    description:
+      'Scan, triage, and recover stranded tokens on-chain. Non-custodial. Live on Ethereum and Base.',
+    creator: '@Salvage_xyz',
+    site: '@Salvage_xyz',
+    images: ['/og-image.png'],
   },
 }
 
