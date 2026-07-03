@@ -55,6 +55,10 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
     recoverableUsd: number
     recoverableCount: number
     contractsIndexed: number
+    recoveredAllTime: number
+    recoveredThisMonth: number
+    protocolFeesUsd: number
+    recoveredCount: number
   } | null>(null)
 
   // Fetch live stats on mount
@@ -185,18 +189,24 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
         </div>
         <div className="d-stat">
           <div className="d-stat-label">All-Time Recovered</div>
-          <div className="d-stat-num">$0</div>
-          <div className="d-stat-sub">No recoveries yet</div>
+          <div className="d-stat-num">{stats ? formatUsdShort(stats.recoveredAllTime) : '$0'}</div>
+          <div className="d-stat-sub">
+            {stats && stats.recoveredCount > 0
+              ? `${stats.recoveredCount} recover${stats.recoveredCount === 1 ? 'y' : 'ies'} settled`
+              : 'No recoveries yet'}
+          </div>
         </div>
         <div className="d-stat">
           <div className="d-stat-label">Recovered This Month</div>
-          <div className="d-stat-num">$0</div>
-          <div className="d-stat-sub">No recoveries yet</div>
+          <div className="d-stat-num">{stats ? formatUsdShort(stats.recoveredThisMonth) : '$0'}</div>
+          <div className="d-stat-sub">
+            {stats && stats.recoveredThisMonth > 0 ? 'Settled on-chain' : 'No recoveries yet'}
+          </div>
         </div>
         <div className="d-stat">
           <div className="d-stat-label">Protocol Fees Earned</div>
-          <div className="d-stat-num accent">$0</div>
-          <div className="d-stat-sub">3% of all recoveries</div>
+          <div className="d-stat-num accent">{stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</div>
+          <div className="d-stat-sub">3–5% of all recoveries</div>
         </div>
       </div>
 

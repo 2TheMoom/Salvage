@@ -31,6 +31,31 @@ export async function GET() {
       }
     }
 
+    // Recovered stats from settled claims
+    const { data: settled } = await supabase
+      .from('salvage_claims')
+      .select('value_usd, finder_address, settled_at')
+      .eq('status', 'settled')
+
+    let recoveredAllTime  = 0
+    let recoveredThisMonth = 0
+    let protocolFeesUsd   = 0
+    let recoveredCount    = 0
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    for (const c of settled || []) {
+      const v = parseFloat(c.value_usd) || 0
+      recoveredAllTime += v
+      recoveredCount++
+      // Protocol cut: 5% victim-initiated (no finder), 3% finder-brokered
+      const protocolRate = c.finder_address ? 0.03 : 0.05
+      protocolFeesUsd += v * protocolRate
+      if (c.settled_at && new Date(c.settled_at) >= monthStart) {
+        recoveredThisMonth += v
+      }
+    }
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -38,6 +63,10 @@ export async function GET() {
         recoverableUsd,
         recoverableCount,
         contractsIndexed: (data || []).length,
+        recoveredAllTime,
+        recoveredThisMonth,
+        protocolFeesUsd,
+        recoveredCount,
       },
     })
   } catch (error) {

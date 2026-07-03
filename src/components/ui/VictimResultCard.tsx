@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { VictimScanResult, VictimFinding } from '@/types'
 import { truncateAddress } from '@/lib/utils'
 import RecoveryClaimPanel from '@/components/ui/RecoveryClaimPanel'
@@ -191,8 +191,28 @@ function explorerTxUrl(txHash: string, chain: string): string {
   return `${base}/tx/${txHash}`
 }
 
+interface RecoveredClaim {
+  token_symbol: string | null
+  value_usd: number | null
+  settle_tx: string | null
+  settled_at: string | null
+  finder_address: string | null
+}
+
 export default function VictimResultCard({ result }: VictimResultCardProps) {
   const hasFindings = result.findings.length > 0
+  const [recovered, setRecovered] = useState<RecoveredClaim[]>([])
+
+  useEffect(() => {
+    fetch(`/api/claims?victim=${result.wallet}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.claims)) {
+          setRecovered(d.claims.filter((c: { status: string }) => c.status === 'settled'))
+        }
+      })
+      .catch(() => {})
+  }, [result.wallet])
 
   return (
     <div className="r-card">
@@ -248,6 +268,45 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
           </div>
         )}
       </div>
+
+      {recovered.length > 0 && (
+        <div style={{ padding: '16px 26px', borderTop: '1px solid var(--border)' }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: 'var(--green)', marginBottom: '10px',
+          }}>
+            ✓ Recovered — {recovered.length} settled
+          </div>
+          {recovered.map((c, i) => (
+            <div key={i} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 12px', marginBottom: '6px', borderRadius: '7px',
+              background: 'var(--card-inner)', border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text)' }}>
+                {c.value_usd ? formatUsd(c.value_usd) : '—'} {c.token_symbol || ''}
+                <span style={{ color: 'var(--text-3)', marginLeft: '8px' }}>
+                  {c.settled_at ? c.settled_at.slice(0, 10) : ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600,
+                  color: 'var(--green)',
+                }}>✓ Settled</span>
+                {c.settle_tx && (
+                  <a href={explorerTxUrl(c.settle_tx, result.chain)}
+                     target="_blank" rel="noopener noreferrer"
+                     style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                    tx ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
