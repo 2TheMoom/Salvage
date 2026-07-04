@@ -39,7 +39,7 @@ ${tokenLines}
 
 ${recoveryNote}
 
-I discovered this using Salvage (salvage-olive.vercel.app), an EVM stranded asset intelligence tool. My find has been registered on-chain with a timestamp proving discovery.
+I discovered this using Salvage (usesalvage.xyz), an EVM stranded asset intelligence tool. My find has been registered on-chain with a timestamp proving discovery.
 
 I'm not asking for anything upfront — if you choose to recover these tokens, a 7% finder's fee (${formatUsd(feeUsd)}) would route to my wallet automatically via the Salvage fee contract. The remaining 93% goes back to your treasury or designated wallet.
 
@@ -50,5 +50,5 @@ Best,
 
 ---
 Salvage Protocol · Find it. Claim it. Recover it.
-salvage-olive.vercel.app`.trim()
+usesalvage.xyz`.trim()
 }

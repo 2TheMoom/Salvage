@@ -3,7 +3,7 @@ import './globals.css'
 import Providers from '@/components/ui/Providers'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://salvage-olive.vercel.app'),
+  metadataBase: new URL('https://usesalvage.xyz'),
   title: 'Salvage — Find and recover tokens stranded in smart contracts',
   description:
     'Scan any contract or your own wallet for stranded ERC-20 tokens, then recover them fully on-chain. Non-custodial settlement. Live on Ethereum and Base.',
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     title: 'Salvage — Recover tokens stranded in smart contracts',
     description:
       'Scan, triage, and recover stranded tokens on-chain. Non-custodial settlement with per-claim deposit addresses. Live on Ethereum and Base.',
-    url: 'https://salvage-olive.vercel.app',
+    url: 'https://usesalvage.xyz',
     siteName: 'Salvage',
     type: 'website',
     images: [

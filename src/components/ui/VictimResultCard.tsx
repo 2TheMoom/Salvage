@@ -57,7 +57,7 @@ ${rescue}
 
 I'd be grateful if you could help return these funds. Happy to verify ownership of the sending wallet by signing a message.
 
-Found via Salvage — salvage-olive.vercel.app`
+Found via Salvage — usesalvage.xyz`
 }
 
 function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; chain: string; victimWallet: string }) {

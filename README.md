@@ -7,7 +7,7 @@
 ![Contracts verified](https://img.shields.io/badge/contracts-verified-1A6B3C)
 ![License MIT](https://img.shields.io/badge/license-MIT-blue)
 
-[**Live app**](https://salvage-olive.vercel.app) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
+[**Live app**](https://usesalvage.xyz) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
 
 Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)).
 

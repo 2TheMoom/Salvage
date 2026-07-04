@@ -60,7 +60,7 @@ No action needed — payment is trustless and on-chain.
 TIMEFRAME: Owner must execute within 90 days of your registration.
 
 ══════════════════════════════════
-Salvage Protocol · salvage-olive.vercel.app
+Salvage Protocol · usesalvage.xyz
     `.trim()
   }
 
@@ -98,7 +98,7 @@ NOTE: This path requires team cooperation and governance.
 Average timeline: 2-4 weeks after team engagement.
 
 ══════════════════════════════════
-Salvage Protocol · salvage-olive.vercel.app
+Salvage Protocol · usesalvage.xyz
   `.trim()
 }
 
