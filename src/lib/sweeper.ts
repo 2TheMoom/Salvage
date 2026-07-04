@@ -79,34 +79,47 @@ async function getAllTokenBalances(
   const MAX_PAGES = 20 // up to ~2000 token contracts
 
   for (let page = 0; page < MAX_PAGES; page++) {
-    try {
-      const res = await fetch(rpc, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0', id: 1,
-          method:  'alchemy_getTokenBalances',
-          params:  pageKey ? [address, 'erc20', { pageKey }] : [address, 'erc20'],
-        }),
-      })
-      const data = await res.json()
-      if (page === 0) {
-        console.log(`[discover] ${chain}:${address} p0 status=${res.status} hasResult=${!!data.result} count=${data.result?.tokenBalances?.length ?? 'none'} err=${data.error ? JSON.stringify(data.error) : 'none'}`)
-      }
-      const balances = data.result?.tokenBalances
-      if (!balances) break
+    let data: { result?: { tokenBalances?: Array<{ tokenBalance: string | null }>; pageKey?: string }; error?: { code: number } } | null = null
 
-      for (const t of balances) {
-        if (!t.tokenBalance) continue
-        try { if (BigInt(t.tokenBalance) > 0n) all.push(t) } catch { /* skip */ }
+    // Up to 4 attempts per page — 429s from the shared free tier are
+    // transient and usually clear within a second.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 10000)
+        const res = await fetch(rpc, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0', id: 1,
+            method:  'alchemy_getTokenBalances',
+            params:  pageKey ? [address, 'erc20', { pageKey }] : [address, 'erc20'],
+          }),
+          signal: ctrl.signal,
+        })
+        clearTimeout(timer)
+        const json = await res.json()
+        if (res.status === 429 || json.error?.code === 429) {
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1))) // 0.5s,1s,1.5s,2s
+          continue
+        }
+        data = json
+        break
+      } catch {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
       }
-
-      pageKey = data.result.pageKey
-      if (!pageKey) break
-    } catch (e) {
-      console.error(`[discover] ${chain}:${address} p${page} threw:`, e instanceof Error ? e.message : e)
-      break
     }
+
+    const balances = data?.result?.tokenBalances
+    if (!balances) break
+
+    for (const t of balances) {
+      if (!t.tokenBalance) continue
+      try { if (BigInt(t.tokenBalance) > 0n) all.push(t as { contractAddress: string; tokenBalance: string }) } catch { /* skip */ }
+    }
+
+    pageKey = data?.result?.pageKey
+    if (!pageKey) break
   }
   return all
 }
@@ -123,22 +136,35 @@ async function getKnownTokenBalances(
   const knownAddrs = Object.keys(SYMBOL_MAP)
   const out: Array<{ contractAddress: string; tokenBalance: string }> = []
 
-  try {
-    const res = await fetch(rpc, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 1,
-        method:  'alchemy_getTokenBalances',
-        params:  [address, knownAddrs],
-      }),
-    })
-    const data = await res.json()
-    for (const t of data.result?.tokenBalances || []) {
-      if (!t.tokenBalance) continue
-      try { if (BigInt(t.tokenBalance) > 0n) out.push(t) } catch { /* skip */ }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 10000)
+      const res = await fetch(rpc, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method:  'alchemy_getTokenBalances',
+          params:  [address, knownAddrs],
+        }),
+        signal: ctrl.signal,
+      })
+      clearTimeout(timer)
+      const data = await res.json()
+      if (res.status === 429 || data.error?.code === 429) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+        continue
+      }
+      for (const t of data.result?.tokenBalances || []) {
+        if (!t.tokenBalance) continue
+        try { if (BigInt(t.tokenBalance) > 0n) out.push(t) } catch { /* skip */ }
+      }
+      break
+    } catch {
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
     }
-  } catch { /* discovery still covers most */ }
+  }
   return out
 }
 
