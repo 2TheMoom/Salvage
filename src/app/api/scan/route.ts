@@ -52,8 +52,13 @@ export async function POST(req: NextRequest) {
       `[scan] ${chain}:${address} → name="${result.tokenName ?? 'NONE'}" symbol="${result.tokenSymbol ?? 'NONE'}" impl=${result.implementationAddress ?? 'none'} status=${result.triageStatus}`
     )
 
-    // Step 2: Sweep token balances (M2) — run in parallel with triage
-    const strandedTokens = await sweepTokenBalances(address, chain)
+    // Step 2: Sweep token balances (M2)
+    let strandedTokens: Awaited<ReturnType<typeof sweepTokenBalances>> = []
+    try {
+      strandedTokens = await sweepTokenBalances(address, chain)
+    } catch (sweepErr) {
+      console.error(`[scan→sweep] failed for ${chain}:${address}:`, sweepErr)
+    }
     const { totalStrandedUsd, finderFeeUsd } = calcTotals(strandedTokens)
 
     // Step 3: Attach M2 data to result

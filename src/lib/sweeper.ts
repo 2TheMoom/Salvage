@@ -183,15 +183,20 @@ async function fetchPricesBySymbol(
     chunk.forEach(s => params.append('symbols', s))
     // Retry with backoff — bursts of scans can hit Alchemy throughput
     // limits (429). A throttled pricing call must never zero out majors.
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 8000)
         const res = await fetch(
           `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-symbol?${params.toString()}`,
-          { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
+          { headers: { 'Content-Type': 'application/json' }, cache: 'no-store', signal: ctrl.signal }
         )
+        clearTimeout(timer)
         if (!res.ok) {
-          await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
-          continue
+          // Only a rate-limit (429) is worth retrying. Any other failure
+          // won't recover — bail immediately so we don't burn the timeout.
+          if (res.status === 429) { await new Promise(r => setTimeout(r, 500)); continue }
+          break
         }
         const data = await res.json()
         for (const item of data.data || []) {
@@ -203,7 +208,7 @@ async function fetchPricesBySymbol(
         }
         break
       } catch {
-        await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
+        break // timeout or network error — stablecoin floor will cover majors
       }
     }
   }
@@ -229,19 +234,23 @@ export async function fetchPricesByAddress(
 
   const runBatch = async (chunk: string[]) => {
     const addresses = chunk.map(addr => ({ network, address: addr }))
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 8000)
         const res = await fetch(
           `https://api.g.alchemy.com/prices/v1/${apiKey}/tokens/by-address`,
           {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ addresses }),
+            signal: ctrl.signal,
           }
         )
+        clearTimeout(timer)
         if (!res.ok) {
-          await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
-          continue
+          if (res.status === 429) { await new Promise(r => setTimeout(r, 500)); continue }
+          return
         }
         const data = await res.json()
         for (const item of data.data || []) {
@@ -253,12 +262,12 @@ export async function fetchPricesByAddress(
         }
         return
       } catch {
-        await new Promise(r => setTimeout(r, 600 * (attempt + 1)))
+        return // timeout or network error — don't stall the whole sweep
       }
     }
   }
 
-  const POOL = 3
+  const POOL = 5
   for (let i = 0; i < batches.length; i += POOL) {
     await Promise.allSettled(batches.slice(i, i + POOL).map(runBatch))
   }
