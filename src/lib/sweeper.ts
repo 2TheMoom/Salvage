@@ -111,7 +111,10 @@ async function getAllTokenBalances(
     }
 
     const balances = data?.result?.tokenBalances
-    if (!balances) break
+    if (!balances) {
+      console.error(`[discover] ${chain}:${address} p${page} no balances after retries — err=${data?.error ? JSON.stringify(data.error) : 'null-result'}`)
+      break
+    }
 
     for (const t of balances) {
       if (!t.tokenBalance) continue
