@@ -76,6 +76,22 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
 
   const connectedWallet = isConnected && address ? address : null
 
+  // A regular user's own recovered funds
+  const [userRecovered, setUserRecovered] = useState<{ total: number; count: number }>({ total: 0, count: 0 })
+  useEffect(() => {
+    if (!connectedWallet) { setUserRecovered({ total: 0, count: 0 }); return }
+    fetch(`/api/claims?victim=${connectedWallet}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.claims)) {
+          const settled = d.claims.filter((c: { status: string }) => c.status === 'settled')
+          const total = settled.reduce((s: number, c: { value_usd: number | null }) => s + (Number(c.value_usd) || 0), 0)
+          setUserRecovered({ total, count: settled.length })
+        }
+      })
+      .catch(() => {})
+  }, [connectedWallet])
+
   // Fetch leaderboard on mount and chain change
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -431,8 +447,8 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
           <div className="s-card">
             <div className="s-head">
               <div>
-                <div className="s-title">Your Earnings</div>
-                <div className="s-sub">All three revenue streams</div>
+                <div className="s-title">{isFounder ? 'Protocol Earnings' : 'Your Recoveries'}</div>
+                <div className="s-sub">{isFounder ? 'On-chain fee revenue' : 'Funds you\u2019ve recovered'}</div>
               </div>
             </div>
             <div className="e-body">
@@ -444,14 +460,27 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
                       {isFounder ? '👑 Founder wallet' : 'Wallet'} · {connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}
                     </div>
                   </div>
-                  <div className="e-row"><span className="e-key">Protocol cut</span><span className="e-val">{isFounder && stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span></div>
-                  <div className="e-row"><span className="e-key">Recoveries settled</span><span className="e-val">{isFounder && stats ? String(stats.recoveredCount) : '0'}</span></div>
-                  <div className="e-row"><span className="e-key">Recovery guide sales</span><span className="e-val">$0</span></div>
-                  <div className="e-div" />
-                  <div className="e-total">
-                    <span className="e-total-key">Total earned</span>
-                    <span className="e-total-val">{isFounder && stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span>
-                  </div>
+                  {isFounder ? (
+                    <>
+                      <div className="e-row"><span className="e-key">Protocol cut</span><span className="e-val">{stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span></div>
+                      <div className="e-row"><span className="e-key">Recoveries settled</span><span className="e-val">{stats ? String(stats.recoveredCount) : '0'}</span></div>
+                      <div className="e-div" />
+                      <div className="e-total">
+                        <span className="e-total-key">Total protocol revenue</span>
+                        <span className="e-total-val">{stats ? formatUsdShort(stats.protocolFeesUsd) : '$0'}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="e-row"><span className="e-key">Recovered</span><span className="e-val">{formatUsdShort(userRecovered.total)}</span></div>
+                      <div className="e-row"><span className="e-key">Recoveries settled</span><span className="e-val">{String(userRecovered.count)}</span></div>
+                      <div className="e-div" />
+                      <div className="e-total">
+                        <span className="e-total-key">Total recovered</span>
+                        <span className="e-total-val">{formatUsdShort(userRecovered.total)}</span>
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <div style={{
