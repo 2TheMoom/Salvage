@@ -315,10 +315,17 @@ export async function sweepTokenBalances(
     fetchPricesByAddress(addrs, chain), // all addresses — known ones double as fallback
   ])
 
+  // Stablecoin price floor — $1 by definition. If the Alchemy Prices API
+  // is down or quota-blocked, majors must still price correctly. USDT alone
+  // is the bulk of most stranded pools.
+  const STABLE_USD: Record<string, number> = {
+    USDC: 1, USDT: 1, DAI: 1, FRAX: 1, BUSD: 1, EUROC: 1.08, GUSD: 1, TUSD: 1, USDP: 1, LUSD: 1,
+  }
+
   const priceFor = (addr: string): number => {
     if (SYMBOL_MAP[addr]) {
       const sym = SYMBOL_MAP[addr].toUpperCase()
-      return symbolPrices[sym] || addressPrices[addr] || 0
+      return symbolPrices[sym] || addressPrices[addr] || STABLE_USD[sym] || 0
     }
     return addressPrices[addr] || 0
   }
@@ -332,7 +339,14 @@ export async function sweepTokenBalances(
     }))
     .filter(t => t.priceUsd > 0)
 
-  if (priced.length === 0) return []
+  // Diagnostic BEFORE the fatal early-return, so pricing failures are never
+  // invisible again. If discovered>0 but priced=0, the Prices API is failing.
+  if (priced.length === 0) {
+    console.error(
+      `[sweep-empty] ${chain}:${address} → discovered=${balances.length} symbolPrices=${Object.keys(symbolPrices).length} addressPrices=${Object.keys(addressPrices).length} — pricing returned nothing`
+    )
+    return []
+  }
 
   const withMetadata: Array<{
     tokenAddress: string
