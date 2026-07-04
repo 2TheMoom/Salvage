@@ -90,6 +90,9 @@ async function getAllTokenBalances(
         }),
       })
       const data = await res.json()
+      if (page === 0) {
+        console.log(`[discover] ${chain}:${address} p0 status=${res.status} hasResult=${!!data.result} count=${data.result?.tokenBalances?.length ?? 'none'} err=${data.error ? JSON.stringify(data.error) : 'none'}`)
+      }
       const balances = data.result?.tokenBalances
       if (!balances) break
 
@@ -100,7 +103,10 @@ async function getAllTokenBalances(
 
       pageKey = data.result.pageKey
       if (!pageKey) break
-    } catch { break }
+    } catch (e) {
+      console.error(`[discover] ${chain}:${address} p${page} threw:`, e instanceof Error ? e.message : e)
+      break
+    }
   }
   return all
 }
