@@ -1,40 +1,19 @@
 # Salvage
 
-**Find and recover tokens stranded in smart contracts.**
+**A recovery protocol for tokens stranded in smart contracts — with a reference application.**
 
-Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)). Salvage makes these funds findable and recoverable.
+![Ethereum + Base](https://img.shields.io/badge/chains-Ethereum%20%2B%20Base-627EEA)
+![Non-custodial](https://img.shields.io/badge/settlement-non--custodial-1A6B3C)
+![Contracts verified](https://img.shields.io/badge/contracts-verified-1A6B3C)
+![License MIT](https://img.shields.io/badge/license-MIT-blue)
 
-🔗 **Live app:** [salvage-olive.vercel.app](https://salvage-olive.vercel.app)
-🐦 **X:** [@Salvage_xyz](https://x.com/Salvage_xyz) · **Farcaster:** [@Salvage-xyz](https://warpcast.com/salvage-xyz)
-📧 **Contact:** gethelp.salvage@gmail.com
+[**Live app**](https://salvage-olive.vercel.app) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
+
+Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)).
+
+Salvage is the missing standard for getting them back: **scan** any contract or wallet for stranded value, **triage** whether it's technically recoverable, and **settle** the recovery trustlessly on-chain. The web app is the reference implementation — the protocol underneath is built to be integrated by wallets, explorers, and support tooling.
 
 ---
-
-## What it does
-
-### 🔍 Contract Scanner
-Paste any ERC-20 contract on Ethereum or Base. Salvage:
-- Sweeps **every token balance** the contract holds (paginated discovery + guaranteed pass on major tokens)
-- Prices holdings via Alchemy Prices API (hybrid by-symbol / by-address, spam-filtered)
-- Runs **recovery triage**: Is the contract verified? Does its ABI expose a rescue function (`rescueERC20()` and friends)? Is it an upgradeable proxy? Is there an owner who can act?
-- Verdict: **Recoverable · Needs Action · Unrecoverable** — plus a ready-to-send outreach message for the contract's team
-
-### 🕵️ Did I Lose Tokens?
-Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
-
-### ⚖️ On-chain Recovery Settlement
-Recovery never depends on trusting anyone:
-
-1. Victim signs an **EIP-712 RecoveryClaim** (token, victim, finder, loss tx, deadline)
-2. Each claim gets its own **deterministic CREATE2 deposit address**
-3. The contract owner rescues the stranded tokens to that address
-4. `settle()` is **permissionless** — sweeps the receiver and splits automatically
-
-**Fee schedule (frozen per claim, enforced by contract):**
-| Flow | Victim | Finder | Protocol |
-|---|---|---|---|
-| Victim-initiated | 95% | — | 5% |
-| Finder-brokered | 90% | 7% | 3% |
 
 ## Live proof — a real recovery on Base mainnet
 
@@ -63,6 +42,32 @@ flowchart TD
     G --> H[💰 Victim 95%\n·\nProtocol 5%]
     G --> I[💰 Victim 90% · Finder 7%\n·\nProtocol 3%]
 ```
+
+## What it does
+
+### 🔍 Contract Scanner
+Paste any ERC-20 contract on Ethereum or Base. Salvage:
+- Sweeps **every token balance** the contract holds (paginated discovery + guaranteed pass on major tokens)
+- Prices holdings via Alchemy Prices API (hybrid by-symbol / by-address, spam-filtered)
+- Runs **recovery triage**: Is the contract verified? Does its ABI expose a rescue function (`rescueERC20()` and friends)? Is it an upgradeable proxy? Is there an owner who can act?
+- Verdict: **Recoverable · Needs Action · Unrecoverable** — plus a ready-to-send outreach message for the contract's team
+
+### 🕵️ Did I Lose Tokens?
+Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
+
+### ⚖️ On-chain Recovery Settlement
+Recovery never depends on trusting anyone:
+
+1. Victim signs an **EIP-712 RecoveryClaim** (token, victim, finder, loss tx, deadline)
+2. Each claim gets its own **deterministic CREATE2 deposit address**
+3. The contract owner rescues the stranded tokens to that address
+4. `settle()` is **permissionless** — sweeps the receiver and splits automatically
+
+**Fee schedule (frozen per claim, enforced by contract):**
+| Flow | Victim | Finder | Protocol |
+|---|---|---|---|
+| Victim-initiated | 95% | — | 5% |
+| Finder-brokered | 90% | 7% | 3% |
 
 ## Deployed contracts
 
@@ -130,6 +135,10 @@ npx hardhat test
 - **Claims pipeline dashboard:** registered → funded → settled tracking, with live "all-time recovered" stats.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
 - **Further out:** recovery APIs for wallets and explorers, protocol support portals, notifications for newly stranded assets.
+
+## Vision
+
+Make stranded ERC-20 recoveries as standardized and trustless as token transfers themselves. Salvage starts as a scanner and a settlement router, but the protocol is designed to become infrastructure — wallet integrations that flag stranded sends before they happen, explorer badges for recoverable contracts, support portals for protocol teams, and an SDK so any app can offer recovery natively. A single frontend is the beginning, not the ceiling.
 
 ## An honest note on recovery
 
