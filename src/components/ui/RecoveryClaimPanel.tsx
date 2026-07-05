@@ -117,6 +117,14 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
   const alreadyRegistered =
     existingClaim && existingClaim[1] !== zeroAddress
 
+  // totalSettled is the 6th field of the Claim struct (index 5).
+  // Non-zero means this claim has already been settled on-chain, so the
+  // receiver being empty is "done", not "awaiting deposit".
+  const alreadySettledOnChain =
+    !!existingClaim && (existingClaim[5] as bigint) > 0n
+
+  const isSettled = alreadySettledOnChain || state === 'settled'
+
   const { data: receiver } = useReadContract({
     address: routerAddress,
     abi: ROUTER_ABI,
@@ -331,7 +339,16 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
         </>
       )}
 
-      {isRegistered && receiver && (
+      {isRegistered && isSettled && (
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', lineHeight: 1.8, color: 'var(--green)' }}>
+          <div>✓ Recovery complete — this claim has been settled on-chain.</div>
+          <div style={{ color: 'var(--text-2)', marginTop: '4px' }}>
+            95% routed to the victim, 5% to the protocol. Nothing further to do.
+          </div>
+        </div>
+      )}
+
+      {isRegistered && !isSettled && receiver && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', lineHeight: 1.8, color: 'var(--text-2)' }}>
           <div>
             ✓ Claim registered. Recovery deposit address:
@@ -365,7 +382,6 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               }}
             >
               {state === 'settling' ? 'Settling…'
-              : state === 'settled' ? '✓ Settled'
               : 'Settle Recovery'}
             </button>
           </div>
