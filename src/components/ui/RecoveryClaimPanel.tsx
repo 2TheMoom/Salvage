@@ -308,60 +308,71 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
         On-chain Recovery · 95% you / 5% protocol
       </div>
 
+      {/* ── Finder axis: off-chain discovery priority (salvage_finds) ──
+          Independent of on-chain claim state. Only shown to non-victim
+          wallets — it's about who found it, not about settlement. */}
+      {isConnected && !isVictimWallet && (
+        <div style={{ marginBottom: (isRegistered || isSettled) ? '12px' : '0' }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.64rem',
+            color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '8px',
+          }}>
+            You&apos;re not the sender ({victimWallet.slice(0, 6)}…{victimWallet.slice(-4)}) —
+            but you found this. Register the find to lock in your 7% finder priority before
+            reaching out to them. First finder wins.
+          </div>
+          {findState === 'registered' ? (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--green)' }}>
+              ✓ Find registered — your finder priority is locked in. Now reach the sender;
+              when they sign the claim, your 7% routes automatically.
+            </div>
+          ) : findState === 'taken' ? (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--amber)' }}>
+              {findMsg}
+            </div>
+          ) : (
+            <button
+              onClick={handleRegisterFind}
+              disabled={findState === 'signing'}
+              style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
+            >
+              {findState === 'signing' ? 'Sign the agreement in your wallet…' : 'Register This Find'}
+            </button>
+          )}
+          {findMsg && findState === 'error' && (
+            <div style={{ marginTop: '6px', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--crimson)' }}>
+              {findMsg}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── On-chain axis: the actual recovery. Not yet registered. ── */}
       {!isRegistered && (
         <>
           {!isConnected ? (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-2)' }}>
               Connect the wallet that sent this transfer to start recovery.
             </div>
-          ) : !isVictimWallet ? (
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-mono)', fontSize: '0.64rem',
-                color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '8px',
-              }}>
-                You&apos;re not the sender ({victimWallet.slice(0, 6)}…{victimWallet.slice(-4)}) —
-                but you found this. Register the find to lock in your 7% finder fee before
-                reaching out to them. First finder wins.
-              </div>
-              {findState === 'registered' ? (
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--green)' }}>
-                  ✓ Find registered — your finder priority is locked in. Now reach the sender;
-                  when they sign the claim, your 7% routes automatically.
-                </div>
-              ) : findState === 'taken' ? (
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--amber)' }}>
-                  {findMsg}
-                </div>
-              ) : (
-                <button
-                  onClick={handleRegisterFind}
-                  disabled={findState === 'signing'}
-                  style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
-                >
-                  {findState === 'signing' ? 'Sign the agreement in your wallet…' : 'Register This Find'}
-                </button>
-              )}
-              {findMsg && findState === 'error' && (
-                <div style={{ marginTop: '6px', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--crimson)' }}>
-                  {findMsg}
-                </div>
-              )}
-            </div>
-          ) : (
+          ) : isVictimWallet ? (
             <button
               onClick={handleStartRecovery}
               disabled={state === 'signing' || state === 'registering'}
               style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
             >
-              {state === 'signing'     ? 'Sign the claim in your wallet…'
+              {state === 'signing'      ? 'Sign the claim in your wallet…'
               : state === 'registering' ? 'Registering on-chain…'
               : 'Start Recovery — Sign Claim'}
             </button>
+          ) : (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--text-3)', lineHeight: 1.7 }}>
+              On-chain recovery is signed by the sender. Once they start it, this find settles automatically.
+            </div>
           )}
         </>
       )}
 
+      {/* ── On-chain axis: settled ── */}
       {isRegistered && isSettled && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', lineHeight: 1.8, color: 'var(--green)' }}>
           <div>✓ Recovery complete — this claim has been settled on-chain.</div>
@@ -371,10 +382,13 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
         </div>
       )}
 
+      {/* ── On-chain axis: registered, awaiting deposit / ready to settle ──
+          Settle is an owner/victim action. A non-victim finder sees status
+          only — never a settle button (that was the reverting transaction). */}
       {isRegistered && !isSettled && receiver && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', lineHeight: 1.8, color: 'var(--text-2)' }}>
           <div>
-            ✓ Claim registered. Recovery deposit address:
+            ✓ Claim registered on-chain. Recovery deposit address:
           </div>
           <div style={{
             padding: '7px 9px', margin: '5px 0', borderRadius: '5px',
@@ -393,20 +407,18 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               style={{ ...btnStyle, background: 'var(--card-inner)', color: 'var(--text)' }}>
               {copied ? '✓ Copied' : 'Copy Owner Instructions'}
             </button>
-            <button
-              onClick={handleSettle}
-              disabled={!funded || state === 'settling'}
-              style={{
-                ...btnStyle,
-                background: funded ? 'var(--green)' : 'var(--card-inner)',
-                color: funded ? '#fff' : 'var(--text-3)',
-                border: funded ? 'none' : '1px solid var(--border)',
-                cursor: funded ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {state === 'settling' ? 'Settling…'
-              : 'Settle Recovery'}
-            </button>
+            {funded && (
+              <button
+                onClick={handleSettle}
+                disabled={state === 'settling'}
+                style={{
+                  ...btnStyle,
+                  background: 'var(--green)', color: '#fff', border: 'none',
+                }}
+              >
+                {state === 'settling' ? 'Settling…' : 'Settle Recovery'}
+              </button>
+            )}
           </div>
         </div>
       )}
