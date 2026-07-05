@@ -1,9 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
-import { mainnet, base } from 'wagmi/chains'
-import { FEE_CONTRACT_ADDRESS, FEE_CONTRACT_ABI } from '@/lib/contracts'
+import { useState, useEffect } from 'react'
+import { useAccount, useSignMessage } from 'wagmi'
 import { Chain } from '@/types'
 
 interface RegisterFindButtonProps {
@@ -13,31 +11,41 @@ interface RegisterFindButtonProps {
   triageStatus:    string
 }
 
+type FindState = 'idle' | 'signing' | 'registered' | 'taken' | 'error'
+
 export default function RegisterFindButton({
   contractAddress,
   tokenAddress,
   chain,
   triageStatus,
 }: RegisterFindButtonProps) {
-  const { address, isConnected, chainId } = useAccount()
-  const { writeContractAsync }            = useWriteContract()
-  const { switchChainAsync }              = useSwitchChain()
+  const { address, isConnected } = useAccount()
+  const { signMessageAsync }     = useSignMessage()
 
-  const [txHash,  setTxHash]  = useState<`0x${string}` | null>(null)
-  const [pending, setPending] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
-  const [done,    setDone]    = useState(false)
+  const [state, setState] = useState<FindState>('idle')
+  const [msg, setMsg]     = useState<string | null>(null)
 
-  const targetChainId = chain === 'eth' ? mainnet.id : base.id
-  const explorerBase  = chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'
+  // Contract-level discovery key: first finder of this stranded contract wins.
+  const findKey = `${chain}:contract:${contractAddress.toLowerCase()}`
 
-  const { isLoading: confirming, isSuccess: confirmed } = useWaitForTransactionReceipt({
-    hash: txHash ?? undefined,
-    // confirmed via isSuccess below
-  })
+  // On mount, reflect whether this contract is already registered (by anyone).
+  useEffect(() => {
+    fetch(`/api/finds?findKey=${encodeURIComponent(findKey)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.find) {
+          if (address && d.find.finder_address?.toLowerCase() === address.toLowerCase()) {
+            setState('registered')
+          } else {
+            setState('taken')
+            setMsg('Already registered by another finder.')
+          }
+        }
+      })
+      .catch(() => {})
+  }, [findKey, address])
 
-  // Watch for confirmation
-  if (confirmed && !done) setDone(true)
+  if (triageStatus === 'unrecoverable') return null
 
   if (!isConnected) {
     return (
@@ -47,59 +55,76 @@ export default function RegisterFindButton({
     )
   }
 
-  if (triageStatus === 'unrecoverable') return null
-
-  if (done && txHash) {
+  if (state === 'registered') {
     return (
-      <a
-        href={`${explorerBase}/tx/${txHash}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
-          color: 'var(--green)', textDecoration: 'none',
-          display: 'flex', alignItems: 'center', gap: '6px',
-        }}
-      >
-        ✓ Find registered on-chain · View tx ↗
-      </a>
+      <div style={{
+        fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+        color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '6px',
+      }}>
+        ✓ Find registered — your finder priority is locked in.
+      </div>
+    )
+  }
+
+  if (state === 'taken') {
+    return (
+      <div style={{
+        fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--amber)',
+      }}>
+        {msg}
+      </div>
     )
   }
 
   const handleRegister = async () => {
     if (!address) return
-    setPending(true)
-    setError(null)
-
+    setMsg(null)
     try {
-      // Switch chain if needed
-      if (chainId !== targetChainId) {
-        await switchChainAsync({ chainId: targetChainId })
-      }
-
-      // Use first stranded token as the tokenAddress if none provided
+      setState('signing')
       const token = tokenAddress || '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      const message =
+        `Salvage finder registration\n\n` +
+        `I am registering a discovered stranded contract and agree to the finder fee schedule ` +
+        `(7% finder, 3% protocol) on successful recovery.\n\n` +
+        `Contract: ${contractAddress}\n` +
+        `Token: ${token}\n` +
+        `Chain: ${chain}\n` +
+        `Finder: ${address}`
 
-      const hash = await writeContractAsync({
-        address:      FEE_CONTRACT_ADDRESS,
-        abi:          FEE_CONTRACT_ABI,
-        functionName: 'registerFind',
-        args:         [contractAddress as `0x${string}`, token as `0x${string}`],
-        chainId:      targetChainId,
+      const signature = await signMessageAsync({ message })
+
+      const res = await fetch('/api/finds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chain,
+          victimWallet:      contractAddress,   // contract is the locus; no single victim
+          tokenAddress:      token,
+          tokenSymbol:       null,
+          lossTxHash:        'contract-scan',   // sentinel: contract-level find
+          recipientContract: contractAddress,
+          valueUsd:          null,
+          finderAddress:     address,
+          signature,
+          message,
+          findKeyOverride:   findKey,           // tell the API to use the contract-level key
+        }),
       })
+      const data = await res.json()
 
-      setTxHash(hash)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Transaction failed'
-      if (msg.includes('rejected') || msg.includes('denied')) {
-        setError('Transaction rejected.')
-      } else if (msg.includes('already')) {
-        setError('Find already registered for this contract.')
+      if (data.success) {
+        setState('registered')
+      } else if (res.status === 409) {
+        setState('taken')
+        setMsg(data.error || 'Already registered by another finder.')
       } else {
-        setError('Registration failed. Try again.')
+        setState('error')
+        setMsg(data.error || 'Registration failed.')
       }
-    } finally {
-      setPending(false)
+    } catch (err: unknown) {
+      const m = err instanceof Error ? err.message : ''
+      setState('error')
+      setMsg(m.includes('reject') || m.includes('denied') ? 'Signature rejected.' : 'Registration failed.')
     }
   }
 
@@ -108,18 +133,15 @@ export default function RegisterFindButton({
       <button
         className="btn-reg"
         onClick={handleRegister}
-        disabled={pending || confirming}
+        disabled={state === 'signing'}
       >
-        {pending     ? 'Check wallet…'    :
-         confirming  ? 'Confirming…'      :
-         'Register This Find'}
+        {state === 'signing' ? 'Check wallet…' : 'Register This Find'}
       </button>
-      {error && (
+      {state === 'error' && msg && (
         <div style={{
-          fontFamily: 'var(--font-mono)', fontSize: '0.67rem',
-          color: 'var(--crimson)',
+          fontFamily: 'var(--font-mono)', fontSize: '0.67rem', color: 'var(--crimson)',
         }}>
-          ✗ {error}
+          ✗ {msg}
         </div>
       )}
     </div>

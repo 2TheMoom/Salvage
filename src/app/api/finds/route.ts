@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const {
       chain, victimWallet, tokenAddress, tokenSymbol, lossTxHash,
       recipientContract, valueUsd, finderAddress, signature, message,
+      findKeyOverride,
     } = await req.json()
 
     if (!chain || !victimWallet || !tokenAddress || !lossTxHash ||
@@ -39,7 +40,8 @@ export async function POST(req: NextRequest) {
 
     // find_key = the unique recovery this find refers to. First writer wins;
     // a later finder hitting the same key is rejected by the unique constraint.
-    const findKey = `${chain}:${tokenAddress.toLowerCase()}:${lossTxHash.toLowerCase()}`
+    const findKey = findKeyOverride
+      || `${chain}:${tokenAddress.toLowerCase()}:${lossTxHash.toLowerCase()}`
 
     const { error } = await admin.from('salvage_finds').insert({
       find_key:           findKey,
