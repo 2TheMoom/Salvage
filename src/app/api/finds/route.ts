@@ -84,10 +84,22 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const finder = req.nextUrl.searchParams.get('finder')
+    const findKey = req.nextUrl.searchParams.get('findKey')
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+
+    if (findKey) {
+      const { data, error } = await supabase
+        .from('salvage_finds')
+        .select('*')
+        .eq('find_key', findKey)
+        .maybeSingle()
+      if (error) throw error
+      return NextResponse.json({ success: true, find: data })
+    }
+
     let query = supabase
       .from('salvage_finds')
       .select('*')

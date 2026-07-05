@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   useAccount, useSignTypedData, useSignMessage, useWriteContract,
   useReadContract, useSwitchChain,
@@ -35,6 +35,29 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
   const [findMsg, setFindMsg]     = useState<string | null>(null)
   const [registerTx, setRegisterTx] = useState<string | null>(null)
   const [settleTx, setSettleTx]     = useState<string | null>(null)
+
+  // On load, check whether this find is already registered (by anyone).
+  // Registration lives in the DB, not local state, so a fresh scan must
+  // re-derive it — otherwise the panel wrongly shows "Register This Find".
+  useEffect(() => {
+    const findKey = `${chain}:${finding.tokenAddress.toLowerCase()}:${finding.txHash.toLowerCase()}`
+    fetch(`/api/finds?findKey=${encodeURIComponent(findKey)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.find) {
+          if (
+            address &&
+            d.find.finder_address?.toLowerCase() === address.toLowerCase()
+          ) {
+            setFindState('registered')
+          } else {
+            setFindState('taken')
+            setFindMsg('This find is already registered by another finder.')
+          }
+        }
+      })
+      .catch(() => {})
+  }, [chain, finding.tokenAddress, finding.txHash, address])
 
   // Finder registration — off-chain, locks in the 7% finder priority
   // with a signed agreement. No victim signature needed at this stage.
