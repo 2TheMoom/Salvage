@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyMessage } from 'viem'
+import { notifyVictimOfClaim } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
       }
       throw error
     }
+
+    // Fire-and-forget: notify the victim if they've opened the Salvage
+    // Mini App and enabled notifications. Never blocks or fails the find
+    // registration — a missing token is the normal case, not an error.
+    notifyVictimOfClaim(
+      victimWallet,
+      tokenSymbol || 'tokens',
+      valueUsd ?? 0
+    ).catch((e) => console.error('[/api/finds] notify failed:', e))
 
     return NextResponse.json({ success: true, findKey })
   } catch (err) {
