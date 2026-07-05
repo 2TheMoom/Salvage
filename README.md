@@ -5,9 +5,10 @@
 ![Ethereum + Base](https://img.shields.io/badge/chains-Ethereum%20%2B%20Base-627EEA)
 ![Non-custodial](https://img.shields.io/badge/settlement-non--custodial-1A6B3C)
 ![Contracts verified](https://img.shields.io/badge/contracts-verified-1A6B3C)
+![Base App](https://img.shields.io/badge/Base%20App-Mini%20App-627EEA)
 ![License MIT](https://img.shields.io/badge/license-MIT-blue)
 
-[**Live app**](https://usesalvage.xyz) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
+[**Live app**](https://usesalvage.xyz) · [**Base App Mini App**](https://salvage-miniapp.vercel.app) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
 
 Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)).
 
@@ -55,6 +56,9 @@ Paste any ERC-20 contract on Ethereum or Base. Salvage:
 ### 🕵️ Did I Lose Tokens?
 Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
 
+### 📱 Base App Mini App
+Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it for recoverable tokens, no site navigation or copy-paste. Findings link straight back to the full recovery flow. Built with MiniKit / OnchainKit; registered on Base.dev. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
+
 ### ⚖️ On-chain Recovery Settlement
 Recovery never depends on trusting anyone:
 
@@ -98,6 +102,7 @@ Test suite: 10/10 passing (`npx hardhat test`) covering both fee paths, determin
 - **Data:** Alchemy (RPC, Token API, Prices API) · Etherscan API V2 · Supabase (leaderboard, claims registry)
 - **Contracts:** Solidity 0.8.20 · Hardhat 3 · Ignition deploys · node:test + viem test suite
 - **Chains:** Ethereum + Base
+- **Base App:** MiniKit / OnchainKit Mini App · registered on Base.dev · wallet-address notification opt-in
 
 ## Repo layout
 
@@ -111,6 +116,8 @@ contracts-hardhat/
   test/            router test suite
   ignition/        deployment modules + records (chain-1, chain-8453)
 ```
+
+> The Base App Mini App lives in a separate repo: [`2TheMoom/salvage-miniapp`](https://github.com/2TheMoom/salvage-miniapp)
 
 ## Running locally
 
