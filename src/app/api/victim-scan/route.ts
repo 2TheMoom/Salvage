@@ -10,6 +10,16 @@ export const fetchCache = 'force-no-store'
 // needs more than the default 10s.
 export const maxDuration = 60
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -18,14 +28,14 @@ export async function POST(req: NextRequest) {
     if (!address || !isValidAddress(address)) {
       return NextResponse.json<VictimScanApiResponse>(
         { success: false, error: 'Invalid wallet address. Must be a valid 0x Ethereum address.' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       )
     }
 
     if (!chain || !['eth', 'base'].includes(chain)) {
       return NextResponse.json<VictimScanApiResponse>(
         { success: false, error: 'Invalid chain. Must be "eth" or "base".' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       )
     }
 
@@ -34,12 +44,15 @@ export async function POST(req: NextRequest) {
       `[victim-scan] ${chain}:${address} → findings=${result.findings.length} totalLostUsd=${result.totalLostUsd.toFixed(2)}`
     )
 
-    return NextResponse.json<VictimScanApiResponse>({ success: true, result })
+    return NextResponse.json<VictimScanApiResponse>(
+      { success: true, result },
+      { headers: corsHeaders }
+    )
   } catch (err) {
     console.error('[victim-scan] error:', err)
     return NextResponse.json<VictimScanApiResponse>(
       { success: false, error: 'Scan failed. Please try again.' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     )
   }
 }
