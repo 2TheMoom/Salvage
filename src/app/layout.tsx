@@ -1,6 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Providers from '@/components/ui/Providers'
+
+export const viewport: Viewport = {
+  themeColor: '#0F0F11',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://usesalvage.xyz'),
@@ -8,6 +12,11 @@ export const metadata: Metadata = {
   description:
     'Scan any contract or your own wallet for stranded ERC-20 tokens, then recover them fully on-chain. Non-custodial settlement. Live on Ethereum and Base.',
   keywords: ['EVM', 'stranded tokens', 'ERC-20', 'recovery', 'Ethereum', 'Base', 'DeFi', 'smart contract recovery', 'non-custodial'],
+  applicationName: 'Salvage',
+  appleWebApp: {
+    title: 'Salvage',
+    statusBarStyle: 'black-translucent',
+  },
   openGraph: {
     title: 'Salvage — Recover tokens stranded in smart contracts',
     description:
