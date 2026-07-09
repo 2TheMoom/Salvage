@@ -23,6 +23,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
+    // A finder can never be the victim/loss wallet itself — the on-chain
+    // router rejects finder == victim at settlement anyway, so a match here
+    // would permanently squat this find's registration slot for a claim
+    // that can never actually pay out. Reject it up front instead.
+    if (finderAddress.toLowerCase() === victimWallet.toLowerCase()) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot register as the finder of your own loss.' },
+        { status: 400 }
+      )
+    }
+
     // Verify the finder actually signed the agreement
     const valid = await verifyMessage({
       address: finderAddress as `0x${string}`,

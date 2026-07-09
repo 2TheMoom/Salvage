@@ -36,6 +36,11 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
   const [registerTx, setRegisterTx] = useState<string | null>(null)
   const [settleTx, setSettleTx]     = useState<string | null>(null)
 
+  // The off-chain-registered finder for this find, if any — this is what
+  // actually gets threaded into the on-chain claim below. `null` until the
+  // lookup resolves, which is treated as "no finder" (the common case).
+  const [registeredFinder, setRegisteredFinder] = useState<string | null>(null)
+
   // On load, check whether this find is already registered (by anyone).
   // Registration lives in the DB, not local state, so a fresh scan must
   // re-derive it — otherwise the panel wrongly shows "Register This Find".
@@ -45,10 +50,14 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.find) {
-          if (
-            address &&
-            d.find.finder_address?.toLowerCase() === address.toLowerCase()
-          ) {
+          const registered = d.find.finder_address as string | undefined
+          // Defensive: the API rejects finder === victim on write, but never
+          // trust a stored value blindly — a finder equal to the victim can
+          // never settle on-chain (the router reverts), so treat it as none.
+          if (registered && registered.toLowerCase() !== victimWallet.toLowerCase()) {
+            setRegisteredFinder(registered)
+          }
+          if (address && registered?.toLowerCase() === address.toLowerCase()) {
             setFindState('registered')
           } else {
             setFindState('taken')
@@ -57,7 +66,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         }
       })
       .catch(() => {})
-  }, [chain, finding.tokenAddress, finding.txHash, address])
+  }, [chain, finding.tokenAddress, finding.txHash, address, victimWallet])
 
   // Finder registration — off-chain, locks in the 7% finder priority
   // with a signed agreement. No victim signature needed at this stage.
@@ -113,6 +122,12 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
   const isVictimWallet =
     isConnected && address?.toLowerCase() === victimWallet.toLowerCase()
 
+  // The finder actually used on-chain: the registered finder if one exists,
+  // otherwise zeroAddress (victim-initiated, 95/5). This is the single
+  // source of truth for claimId, the EIP-712 signature, and registerClaim.
+  const finderForClaim = (registeredFinder ?? zeroAddress) as `0x${string}`
+  const hasFinder = finderForClaim !== zeroAddress
+
   // claimId is deterministic: keccak256(abi.encode(token, victim, finder, lossTxHash))
   const claimId = useMemo(() => {
     try {
@@ -121,12 +136,12 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         [
           finding.tokenAddress as `0x${string}`,
           victimWallet as `0x${string}`,
-          zeroAddress,
+          finderForClaim,
           finding.txHash as `0x${string}`,
         ]
       ))
     } catch { return undefined }
-  }, [finding.tokenAddress, finding.txHash, victimWallet])
+  }, [finding.tokenAddress, finding.txHash, victimWallet, finderForClaim])
 
   // On-chain state: is this claim already registered?
   const { data: existingClaim, refetch: refetchClaim } = useReadContract({
@@ -185,7 +200,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         message: {
           token:      finding.tokenAddress as `0x${string}`,
           victim:     victimWallet as `0x${string}`,
-          finder:     zeroAddress,
+          finder:     finderForClaim,
           lossTxHash: finding.txHash as `0x${string}`,
           deadline,
         },
@@ -199,7 +214,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         args: [
           finding.tokenAddress as `0x${string}`,
           victimWallet as `0x${string}`,
-          zeroAddress,
+          finderForClaim,
           finding.txHash as `0x${string}`,
           deadline,
           signature,
@@ -216,7 +231,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
           tokenAddress:    finding.tokenAddress,
           tokenSymbol:     finding.tokenSymbol,
           victimAddress:   victimWallet,
-          finderAddress:   null,
+          finderAddress:   hasFinder ? finderForClaim : null,
           lossTxHash:      finding.txHash,
           receiverAddress: receiver,
           valueUsd:        finding.valueUsd,
@@ -277,7 +292,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
 
 ${receiver}
 
-Rescue the stranded ${finding.tokenSymbol} to this exact address on ${chainName}. Settlement is automatic and fully on-chain — 95% routes to the verified victim, 5% to the protocol. You never have to trust a claimed wallet address.
+Rescue the stranded ${finding.tokenSymbol} to this exact address on ${chainName}. Settlement is automatic and fully on-chain — ${hasFinder ? '90% routes to the verified victim, 7% to the finder, 3% to the protocol' : '95% routes to the verified victim, 5% to the protocol'}. You never have to trust a claimed wallet address.
 
 Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_ROUTER_ADDRESS[chainId]}#code`
     try {
@@ -305,7 +320,7 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
         letterSpacing: '0.08em', textTransform: 'uppercase',
         color: 'var(--text-2)', marginBottom: '8px',
       }}>
-        On-chain Recovery · 95% you / 5% protocol
+        On-chain Recovery · {hasFinder ? '90% you / 7% finder / 3% protocol' : '95% you / 5% protocol'}
       </div>
 
       {/* ── Finder axis: off-chain discovery priority (salvage_finds) ──
@@ -355,15 +370,26 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               Connect the wallet that sent this transfer to start recovery.
             </div>
           ) : isVictimWallet ? (
-            <button
-              onClick={handleStartRecovery}
-              disabled={state === 'signing' || state === 'registering'}
-              style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
-            >
-              {state === 'signing'      ? 'Sign the claim in your wallet…'
-              : state === 'registering' ? 'Registering on-chain…'
-              : 'Start Recovery — Sign Claim'}
-            </button>
+            <>
+              {hasFinder && (
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
+                  color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '8px',
+                }}>
+                  A finder ({finderForClaim.slice(0, 6)}…{finderForClaim.slice(-4)}) registered this
+                  find first. Signing routes 90% to you, 7% to them, 3% to the protocol.
+                </div>
+              )}
+              <button
+                onClick={handleStartRecovery}
+                disabled={state === 'signing' || state === 'registering'}
+                style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}
+              >
+                {state === 'signing'      ? 'Sign the claim in your wallet…'
+                : state === 'registering' ? 'Registering on-chain…'
+                : 'Start Recovery — Sign Claim'}
+              </button>
+            </>
           ) : (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--text-3)', lineHeight: 1.7 }}>
               On-chain recovery is signed by the sender. Once they start it, this find settles automatically.
@@ -377,7 +403,9 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', lineHeight: 1.8, color: 'var(--green)' }}>
           <div>✓ Recovery complete — this claim has been settled on-chain.</div>
           <div style={{ color: 'var(--text-2)', marginTop: '4px' }}>
-            95% routed to the victim, 5% to the protocol. Nothing further to do.
+            {hasFinder
+              ? '90% routed to the victim, 7% to the finder, 3% to the protocol. Nothing further to do.'
+              : '95% routed to the victim, 5% to the protocol. Nothing further to do.'}
           </div>
         </div>
       )}
@@ -447,7 +475,9 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
           marginTop: '8px', fontFamily: 'var(--font-mono)',
           fontSize: '0.66rem', color: 'var(--green)',
         }}>
-          ✓ Recovery settled on-chain — 95% is in your wallet.
+          {hasFinder
+            ? '✓ Recovery settled on-chain — 90% is in your wallet, 7% to your finder.'
+            : '✓ Recovery settled on-chain — 95% is in your wallet.'}
         </div>
       )}
 
