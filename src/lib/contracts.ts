@@ -1,3 +1,5 @@
+import { keccak256, encodePacked } from 'viem'
+
 // Contract addresses — same on both chains
 export const FEE_CONTRACT_ADDRESS = '0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27' as const
 
@@ -239,4 +241,18 @@ export function routerDomain(chainId: number) {
     chainId,
     verifyingContract: RECOVERY_ROUTER_ADDRESS[chainId],
   } as const
+}
+
+// Contract-scan claims aren't tied to one victim's single mistaken transfer
+// the way "Did I lose tokens?" claims are — a stranded contract can hold
+// many different senders' accidental transfers at once. There's no single
+// lossTxHash for that, so we derive a stable, deterministic stand-in per
+// contract instead. Safe to reuse across every token that contract holds:
+// claimId already varies by `token` as a separate field, so this alone
+// never causes two distinct claims to collide.
+export function contractScanLossTxHash(contractAddress: string): `0x${string}` {
+  return keccak256(encodePacked(
+    ['string', 'address'],
+    ['salvage-contract-scan', contractAddress as `0x${string}`]
+  ))
 }

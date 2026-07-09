@@ -21,6 +21,7 @@ export interface ScanResult {
   tokenSymbol?: string
   deployerAddress?: string
   implementationAddress?: string
+  ownerAddress?: string
   triageStatus: TriageStatus
   checks: TriageCheck[]
   // M2: populated later

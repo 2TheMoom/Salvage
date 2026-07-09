@@ -21,6 +21,7 @@ const SLOT_ZOS_IMPL       = '0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723
 // ── ERC-20 selectors
 const SEL_NAME   = '0x06fdde03' // name()
 const SEL_SYMBOL = '0x95d89b41' // symbol()
+const SEL_OWNER  = '0x8da5cb5b' // owner()
 
 function getRpcUrl(chain: Chain): string {
   if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC!
@@ -101,6 +102,21 @@ async function fetchOnchainIdentity(
     name:   decodeStringResult(nameHex),
     symbol: decodeStringResult(symbolHex),
   }
+}
+
+// Read the live owner() value on-chain. Called on the contract address
+// itself (not the implementation) so proxies resolve correctly — eth_call
+// routes through the proxy's delegatecall, reading its own storage.
+// Only handles the standard Ownable `owner()` selector; AccessControl-style
+// contracts (getRoleAdmin/DEFAULT_ADMIN_ROLE) return undefined here, which
+// is the safe default — no owner-gated action should show for those.
+async function fetchOwnerAddress(address: string, chain: Chain): Promise<string | undefined> {
+  const hex = await rpc(getRpcUrl(chain), 'eth_call', [{ to: address, data: SEL_OWNER }, 'latest'])
+  if (!hex || hex === '0x' || hex.length < 66) return undefined
+  const addr = '0x' + hex.slice(-40)
+  return /^0x[0-9a-fA-F]{40}$/.test(addr) && addr !== '0x0000000000000000000000000000000000000000'
+    ? addr.toLowerCase()
+    : undefined
 }
 
 // Detect proxy implementation via storage slots — deterministic, RPC-based.
@@ -408,6 +424,11 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     implementation:  implAbi ? proxyInfo.implementation : undefined,
   })
 
+  // Only worth reading if the ABI actually exposes an owner()-shaped
+  // function — this is what gates the owner-recovery UI, so a failed/absent
+  // read must default to undefined (fail closed, not open).
+  const ownerAddress = hasOwner ? await fetchOwnerAddress(normalizedAddress, chain) : undefined
+
   return {
     contractAddress:       normalizedAddress,
     chain,
@@ -417,6 +438,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     tokenSymbol:           identity.symbol,
     deployerAddress,
     implementationAddress: proxyInfo.implementation,
+    ownerAddress,
     triageStatus:          status,
     checks,
   }

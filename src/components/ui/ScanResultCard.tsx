@@ -6,6 +6,7 @@ import { truncateAddress, explorerUrl } from '@/lib/utils'
 import { generateOutreachTemplate } from '@/lib/outreach'
 import RegisterFindButton from '@/components/ui/RegisterFindButton'
 import RecoveryGuideButton from '@/components/ui/RecoveryGuideButton'
+import OwnerClaimPanel from '@/components/ui/OwnerClaimPanel'
 
 interface ScanResultCardProps {
   result:    ScanResult
@@ -215,6 +216,19 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
           </div>
         )
       })()}
+
+      {/* Owner-gated on-chain recovery — only renders for the wallet
+          matching the contract's detected owner() */}
+      {hasStranded && result.ownerAddress && (
+        <div style={{ padding: '0 26px' }}>
+          <OwnerClaimPanel
+            contractAddress={result.contractAddress}
+            chain={result.chain}
+            ownerAddress={result.ownerAddress}
+            tokens={result.strandedTokens!}
+          />
+        </div>
+      )}
 
       {/* Founder note */}
       {isFounder && result.triageStatus !== 'unrecoverable' && (
