@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, useSignMessage } from 'wagmi'
+import { useAccount, useSignMessage, useConnect } from 'wagmi'
+import { injected } from '@wagmi/connectors'
 import { Chain } from '@/types'
 
 interface RegisterFindButtonProps {
@@ -21,9 +22,18 @@ export default function RegisterFindButton({
 }: RegisterFindButtonProps) {
   const { address, isConnected } = useAccount()
   const { signMessageAsync }     = useSignMessage()
+  const { connect }              = useConnect()
 
-  const [state, setState] = useState<FindState>('idle')
-  const [msg, setMsg]     = useState<string | null>(null)
+  const [state, setState]       = useState<FindState>('idle')
+  const [msg, setMsg]           = useState<string | null>(null)
+  const [jiggling, setJiggling] = useState(false)
+
+  // A rejected connection attempt shouldn't just dead-end back to a disabled
+  // button with no feedback — jiggle it so it's clear something needs retrying.
+  const triggerJiggle = () => {
+    setJiggling(true)
+    setTimeout(() => setJiggling(false), 450)
+  }
 
   // Contract-level discovery key: first finder of this stranded contract wins.
   const findKey = `${chain}:contract:${contractAddress.toLowerCase()}`
@@ -49,7 +59,10 @@ export default function RegisterFindButton({
 
   if (!isConnected) {
     return (
-      <button className="btn-reg" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>
+      <button
+        className={`btn-reg ${jiggling ? 'jiggle' : ''}`}
+        onClick={() => connect({ connector: injected() }, { onError: () => triggerJiggle() })}
+      >
         Connect Wallet to Register
       </button>
     )

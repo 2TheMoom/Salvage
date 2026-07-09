@@ -29,6 +29,15 @@ export default function ConnectButton({
   const [verified,   setVerified]   = useState(false)
   const [verifying,  setVerifying]  = useState(false)
   const [signError,  setSignError]  = useState<string | null>(null)
+  const [jiggling,   setJiggling]   = useState(false)
+
+  // A rejected/failed connection attempt shouldn't dead-end silently —
+  // jiggle the button so it's obvious something needs retrying, instead of
+  // just reverting back to "Connect Wallet" with no feedback at all.
+  const triggerJiggle = () => {
+    setJiggling(true)
+    setTimeout(() => setJiggling(false), 450)
+  }
 
   const isFounder = address
     ? address.toLowerCase() === FOUNDER_ADDRESS
@@ -253,7 +262,10 @@ export default function ConnectButton({
           <div style={{ height: '1px', background: 'var(--dark-border)', margin: '4px 0' }} />
 
           <button
-            onClick={() => { connect({ connector: injected() }); setShowMenu(false) }}
+            onClick={() => {
+              connect({ connector: injected() }, { onError: () => triggerJiggle() })
+              setShowMenu(false)
+            }}
             disabled={isPending}
             style={{
               width: '100%', textAlign: 'left',
@@ -272,7 +284,10 @@ export default function ConnectButton({
 
           <button
             onClick={() => {
-              connect({ connector: coinbaseWallet({ appName: 'Salvage' }) })
+              connect(
+                { connector: coinbaseWallet({ appName: 'Salvage' }) },
+                { onError: () => triggerJiggle() }
+              )
               setShowMenu(false)
             }}
             disabled={isPending}
@@ -301,7 +316,7 @@ export default function ConnectButton({
 
   return (
     <button
-      className={variant === 'landing' ? 'btn-nav-primary' : 'btn-connect-d'}
+      className={`${variant === 'landing' ? 'btn-nav-primary' : 'btn-connect-d'} ${jiggling ? 'jiggle' : ''}`}
       onClick={() => setShowMenu(true)}
       disabled={isPending}
     >

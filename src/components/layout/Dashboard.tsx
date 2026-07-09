@@ -30,6 +30,8 @@ interface DashboardProps {
   onGoLanding: () => void
   connectedWallet: string | null
   initialScan?: { chain: Chain; address: string } | null
+  scrollTarget?: string | null
+  onScrollHandled?: () => void
 }
 
 function formatUsdShort(value: number): string {
@@ -39,7 +41,7 @@ function formatUsdShort(value: number): string {
   return `$${value.toFixed(0)}`
 }
 
-export default function Dashboard({ onGoLanding, initialScan }: DashboardProps) {
+export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onScrollHandled }: DashboardProps) {
   const { address, isConnected }      = useAccount()
   const [mode, setMode]               = useState<'contract' | 'victim'>('contract')
   const [inputAddr, setInputAddr]     = useState('')
@@ -173,6 +175,15 @@ export default function Dashboard({ onGoLanding, initialScan }: DashboardProps) 
     // runScan identity change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScan])
+
+  // "View Leaderboard" from the landing page — scroll to the section that's
+  // already on this page instead of leaving the click going nowhere.
+  useEffect(() => {
+    if (!scrollTarget) return
+    document.getElementById(scrollTarget)?.scrollIntoView({ behavior: 'smooth' })
+    onScrollHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollTarget])
 
   const switchMode = (m: 'contract' | 'victim') => {
     if (m === mode) return
@@ -521,13 +532,25 @@ export default function Dashboard({ onGoLanding, initialScan }: DashboardProps) 
           Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2
         </div>
         <div className="d-footer-r">
-          <a href="#">Docs</a>
-          <a href="#">Fee Contract</a>
           <a href="/privacy">Privacy</a>
-          <a href="https://x.com/salvage_xyz" target="_blank" rel="noopener noreferrer">@salvagexyz</a>
-          <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer" className="credit">
-            Built by Abu Olumi ↗
+          <a
+            href="https://x.com/Salvage_xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="d-footer-social"
+            title="Salvage on X"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            Salvage
           </a>
+          <span className="credit">
+            Built by{' '}
+            <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer">
+              Abu Olumi
+            </a>
+          </span>
         </div>
       </footer>
     </div>

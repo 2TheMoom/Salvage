@@ -4,6 +4,7 @@ import SonarLogo from '@/components/ui/SonarLogo'
 
 interface LandingProps {
   onOpenDashboard: () => void
+  onOpenLeaderboard: () => void
 }
 
 const PROOF_STEPS = [
@@ -33,7 +34,7 @@ const PROOF_STEPS = [
   },
 ]
 
-export default function Landing({ onOpenDashboard }: LandingProps) {
+export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingProps) {
   return (
     <div id="landing">
       {/* Nav */}
@@ -41,7 +42,7 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         <SonarLogo size={30} variant="white" showWordmark wordmarkSize="1.2rem" />
         <div className="l-nav-right">
           <span className="badge-live">● LIVE</span>
-          <button className="btn-nav-ghost">Leaderboard</button>
+          <button className="btn-nav-ghost" onClick={onOpenLeaderboard}>Leaderboard</button>
           <button className="btn-nav-primary" onClick={onOpenDashboard}>
             Open Dashboard
           </button>
@@ -65,7 +66,7 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
             <button className="btn-hero-primary" onClick={onOpenDashboard}>
               Open Dashboard
             </button>
-            <button className="btn-hero-ghost">View Leaderboard</button>
+            <button className="btn-hero-ghost" onClick={onOpenLeaderboard}>View Leaderboard</button>
           </div>
           <div className="hero-proof">
             <span>Ethereum mainnet</span>
@@ -228,7 +229,7 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
           you recover your own. Non-custodial, enforced by contract.
         </p>
         <button className="btn-cta-white" onClick={onOpenDashboard}>Open Dashboard</button>
-        <button className="btn-cta-outline">View Leaderboard</button>
+        <button className="btn-cta-outline" onClick={onOpenLeaderboard}>View Leaderboard</button>
       </div>
 
       {/* Footer */}

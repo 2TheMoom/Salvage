@@ -29,6 +29,7 @@ export default function Home() {
   const [page, setPage] = useState<Page>('landing')
   const [hydrated, setHydrated] = useState(false)
   const [initialScan, setInitialScan] = useState<{ chain: Chain; address: string } | null>(null)
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null)
 
   useEffect(() => {
     const scan = parseInitialScan()
@@ -48,6 +49,11 @@ export default function Home() {
     sessionStorage.setItem('salvage_page', 'dashboard')
   }
 
+  const goToLeaderboard = () => {
+    setScrollTarget('leaderboard')
+    goToDashboard()
+  }
+
   const goToLanding = () => {
     setPage('landing')
     sessionStorage.setItem('salvage_page', 'landing')
@@ -59,13 +65,15 @@ export default function Home() {
   return (
     <>
       {page === 'landing' && (
-        <Landing onOpenDashboard={goToDashboard} />
+        <Landing onOpenDashboard={goToDashboard} onOpenLeaderboard={goToLeaderboard} />
       )}
       {page === 'dashboard' && (
         <Dashboard
           onGoLanding={goToLanding}
           connectedWallet={null}
           initialScan={initialScan}
+          scrollTarget={scrollTarget}
+          onScrollHandled={() => setScrollTarget(null)}
         />
       )}
     </>
