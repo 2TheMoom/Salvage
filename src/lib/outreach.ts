@@ -41,9 +41,10 @@ ${recoveryNote}
 
 I discovered this using Salvage (usesalvage.xyz), an EVM stranded asset intelligence tool. My find has been registered on-chain with a timestamp proving discovery.
 
-I'm not asking for anything upfront — if you choose to recover these tokens, a 7% finder's fee (${formatUsd(feeUsd)}) would route to my wallet automatically via the Salvage fee contract. The remaining 93% goes back to your treasury or designated wallet.
+I'm not asking for anything upfront — if you choose to recover these tokens, a 7% finder's fee (${formatUsd(feeUsd)}) routes to my wallet automatically via Salvage's on-chain settlement contract, 3% goes to the protocol, and the remaining 90% goes back to your treasury or designated wallet. Nobody custodies your funds at any point.
 
-Happy to provide the full recovery calldata and step-by-step instructions if you'd like to proceed.
+You can see this contract's scan and recover it directly here — connecting the matching owner wallet unlocks a one-click recovery flow:
+https://usesalvage.xyz/?scan=${result.chain}:${result.contractAddress}
 
 Best,
 [Your Name / ENS / Handle]

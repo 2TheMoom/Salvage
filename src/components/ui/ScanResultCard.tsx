@@ -5,12 +5,10 @@ import { ScanResult, TriageCheck, StrandedToken } from '@/types'
 import { truncateAddress, explorerUrl } from '@/lib/utils'
 import { generateOutreachTemplate } from '@/lib/outreach'
 import RegisterFindButton from '@/components/ui/RegisterFindButton'
-import RecoveryGuideButton from '@/components/ui/RecoveryGuideButton'
 import OwnerClaimPanel from '@/components/ui/OwnerClaimPanel'
 
 interface ScanResultCardProps {
-  result:    ScanResult
-  isFounder: boolean
+  result: ScanResult
 }
 
 const STATUS_CONFIG = {
@@ -93,7 +91,7 @@ function StrandedTokenRow({ token }: { token: StrandedToken }) {
   )
 }
 
-export default function ScanResultCard({ result, isFounder }: ScanResultCardProps) {
+export default function ScanResultCard({ result }: ScanResultCardProps) {
   const [copied, setCopied]             = useState(false)
   const [showAllTokens, setShowAllTokens] = useState(false)
 
@@ -105,10 +103,6 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
   const hasStranded  = result.strandedTokens && result.strandedTokens.length > 0
   const totalUsd     = result.totalStrandedUsd ?? 0
   const feeUsd       = result.finderFeeUsd     ?? 0
-
-  // Get rescue function name from checks for guide content
-  const rescueCheck      = result.checks.find(c => c.label.includes('()') && c.status === 'pass')
-  const rescueFunctionName = rescueCheck?.label.replace('()', '').replace(' found in ABI', '').replace(' found in verified ABI', '').trim()
 
   // Get primary stranded token address for registration
   const primaryTokenAddress = result.strandedTokens?.[0]?.tokenAddress
@@ -230,13 +224,6 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
         </div>
       )}
 
-      {/* Founder note */}
-      {isFounder && result.triageStatus !== 'unrecoverable' && (
-        <div className="founder-note">
-          <span>👑</span> Founder wallet — Recovery Guide unlocked automatically.
-        </div>
-      )}
-
       {/* Triage checks */}
       <div className="r-triage">
         {result.checks.map((check, i) => (
@@ -269,12 +256,6 @@ export default function ScanResultCard({ result, isFounder }: ScanResultCardProp
             >
               {chainLabel === 'Ethereum' ? 'Etherscan' : 'Basescan'} ↗
             </a>
-            <RecoveryGuideButton
-              triageStatus={result.triageStatus}
-              contractAddress={result.contractAddress}
-              isFounder={isFounder}
-              rescueFunctionName={rescueFunctionName}
-            />
           </>
         ) : (
           <>

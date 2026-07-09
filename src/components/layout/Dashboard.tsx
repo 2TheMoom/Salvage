@@ -29,6 +29,7 @@ type ScanState = 'idle' | 'loading' | 'success' | 'error'
 interface DashboardProps {
   onGoLanding: () => void
   connectedWallet: string | null
+  initialScan?: { chain: Chain; address: string } | null
 }
 
 function formatUsdShort(value: number): string {
@@ -38,7 +39,7 @@ function formatUsdShort(value: number): string {
   return `$${value.toFixed(0)}`
 }
 
-export default function Dashboard({ onGoLanding }: DashboardProps) {
+export default function Dashboard({ onGoLanding, initialScan }: DashboardProps) {
   const { address, isConnected }      = useAccount()
   const [mode, setMode]               = useState<'contract' | 'victim'>('contract')
   const [inputAddr, setInputAddr]     = useState('')
@@ -109,9 +110,9 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
     fetchLeaderboard()
   }, [lbChain])
 
-  const handleScan = useCallback(async () => {
-    if (!isValidAddress(inputAddr)) {
-      setErrorMsg(mode === 'victim'
+  const runScan = useCallback(async (addr: string, scanChain: Chain, scanMode: 'contract' | 'victim') => {
+    if (!isValidAddress(addr)) {
+      setErrorMsg(scanMode === 'victim'
         ? 'Enter a valid 0x wallet address.'
         : 'Enter a valid 0x contract address.')
       return
@@ -122,14 +123,14 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
     setErrorMsg(null)
 
     try {
-      const endpoint = mode === 'victim' ? '/api/victim-scan' : '/api/scan'
+      const endpoint = scanMode === 'victim' ? '/api/victim-scan' : '/api/scan'
       const res  = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ address: inputAddr, chain }),
+        body:    JSON.stringify({ address: addr, chain: scanChain }),
       })
 
-      if (mode === 'victim') {
+      if (scanMode === 'victim') {
         const data: VictimScanApiResponse = await res.json()
         if (data.success && data.result) {
           setVictimResult(data.result)
@@ -154,7 +155,24 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
       setErrorMsg('Network error. Please try again.')
       setScanState('error')
     }
-  }, [inputAddr, chain, mode])
+  }, [])
+
+  const handleScan = useCallback(() => {
+    runScan(inputAddr, chain, mode)
+  }, [runScan, inputAddr, chain, mode])
+
+  // Outreach deep link (`?scan=chain:0xaddress`) — land the contract owner
+  // straight on their own scan result instead of a blank homepage.
+  useEffect(() => {
+    if (!initialScan) return
+    setMode('contract')
+    setChain(initialScan.chain)
+    setInputAddr(initialScan.address)
+    runScan(initialScan.address, initialScan.chain, 'contract')
+    // Runs once for the deep link this page loaded with — not on every
+    // runScan identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScan])
 
   const switchMode = (m: 'contract' | 'victim') => {
     if (m === mode) return
@@ -348,7 +366,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
               <div className="col-label">
                 Scan Result — {result.contractAddress.slice(0, 6)}…{result.contractAddress.slice(-4)}
               </div>
-              <ScanResultCard result={result} isFounder={isFounder} />
+              <ScanResultCard result={result} />
             </>
           )}
         </div>

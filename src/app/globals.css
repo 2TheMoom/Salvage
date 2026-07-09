@@ -424,7 +424,6 @@ body {
 .r-m-val.muted  { color: var(--text-2); font-size: 1rem; }
 .r-m-val.mono   { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500; }
 .r-m-sub { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-3); }
-.founder-note { display: flex; align-items: center; gap: 9px; margin: 12px 26px 0; padding: 10px 14px; border-radius: 8px; background: var(--eth-soft); border: 1px solid var(--eth-border); font-family: var(--font-mono); font-size: 0.67rem; color: var(--eth); }
 .r-triage { padding: 16px 26px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
 .t-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px; border-radius: 8px; background: var(--card-inner); border: 1px solid var(--border); }
 .t-icon { width: 19px; height: 19px; border-radius: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.58rem; font-weight: 700; margin-top: 1px; }
@@ -439,10 +438,6 @@ body {
 .btn-reg:hover { opacity: 0.85; }
 .btn-out { font-family: var(--font-body); font-size: 0.79rem; font-weight: 500; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-md); background: transparent; color: var(--text-2); cursor: pointer; transition: all 0.2s; }
 .btn-out:hover { color: var(--text); background: var(--card-inner); }
-.btn-guide { font-family: var(--font-body); font-size: 0.79rem; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--green-border); background: var(--green-soft); color: var(--green); cursor: pointer; transition: all 0.2s; }
-.btn-guide:hover { background: var(--green); color: #fff; }
-.btn-guide-founder { font-family: var(--font-body); font-size: 0.79rem; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--eth-border); background: var(--eth-soft); color: var(--eth); cursor: pointer; transition: all 0.2s; }
-.btn-guide-founder:hover { background: var(--eth); color: #fff; }
 .btn-cant { font-family: var(--font-body); font-size: 0.79rem; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-3); cursor: not-allowed; opacity: 0.45; }
 .dead-note { font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-3); margin-left: auto; align-self: center; }
 .d-sidebar { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 20px; }
@@ -527,7 +522,7 @@ body {
   .r-metric:last-child { border-bottom: none; }
   .r-triage { padding: 14px 18px; }
   .r-actions { padding: 14px 18px; flex-wrap: wrap; }
-  .btn-reg, .btn-guide, .btn-guide-founder { width: 100%; text-align: center; }
+  .btn-reg { width: 100%; text-align: center; }
   .d-footer { flex-direction: column; gap: 12px; padding: 18px 20px; text-align: center; }
   .d-footer-r { flex-wrap: wrap; justify-content: center; }
 }

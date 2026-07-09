@@ -103,19 +103,6 @@ export const FEE_CONTRACT_ABI = [
   },
 ] as const
 
-// USDC addresses per chain
-export const USDC_ADDRESS: Record<number, `0x${string}`> = {
-  1:    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // ETH mainnet
-  8453: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // Base mainnet
-}
-
-// Recovery guide prices in USDC (6 decimals)
-export const GUIDE_PRICE_RECOVERABLE  = 149_000_000n // $149 USDC
-export const GUIDE_PRICE_NEEDS_ACTION = 99_000_000n  // $99 USDC
-
-// Guide payment recipient — founder wallet
-export const GUIDE_PAYMENT_RECIPIENT = '0x8a485a86393d9e218c888a24d281f2df5bc37265' as const
-
 // USDC ERC-20 transfer ABI — minimal
 export const USDC_ABI = [
   {
