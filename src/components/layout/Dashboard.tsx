@@ -505,6 +505,7 @@ export default function Dashboard({ onGoLanding }: DashboardProps) {
         <div className="d-footer-r">
           <a href="#">Docs</a>
           <a href="#">Fee Contract</a>
+          <a href="/privacy">Privacy</a>
           <a href="https://x.com/salvage_xyz" target="_blank" rel="noopener noreferrer">@salvagexyz</a>
           <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer" className="credit">
             Built by Abu Olumi ↗

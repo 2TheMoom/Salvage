@@ -271,6 +271,7 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         <div className="l-footer-right">
           <a href="#">Docs</a>
           <a href="#">Fee Contract</a>
+          <a href="/privacy">Privacy</a>
           <span className="credit">
             Built by{' '}
             <a href="https://x.com/Olumi441" target="_blank" rel="noopener noreferrer">

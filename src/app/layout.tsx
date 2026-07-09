@@ -42,6 +42,9 @@ export const metadata: Metadata = {
     site: '@Salvage_xyz',
     images: ['/og-image.png'],
   },
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
 }
 
 export default function RootLayout({
