@@ -53,12 +53,14 @@ Paste any ERC-20 contract on Ethereum or Base. Salvage:
 - Runs **recovery triage**: Is the contract verified? Does its ABI expose a rescue function (`rescueERC20()` and friends)? Is it an upgradeable proxy? Is there an owner who can act?
 - Verdict: **Recoverable · Needs Action · Unrecoverable** — plus a ready-to-send outreach message for the contract's team
 
+If the wallet you connect matches the contract's on-chain `owner()`, an owner-only recovery panel appears per stranded token: register the claim (crediting whichever finder registered first, if any), get a deterministic deposit address, rescue the tokens to it yourself, and settle — the same trustless flow described below, not just an outreach template. Only works for standard `Ownable`-style contracts today; role-based (`AccessControl`) ownership isn't detected yet, so that panel simply won't appear rather than guess wrong.
+
 > **Triage caveat:** the scanner detects the *presence* of rescue functions and ownership patterns in the ABI — it does not verify whether the owner can or will actually act. A `rescueERC20()` gated behind a timelock, or an `owner()` pointing at a multisig that's lost its signers, still reads as "Recoverable" today. Treat the verdict as "a path plausibly exists," not a guarantee.
 
 ### 🕵️ Finder registration
 Anyone can discover a stranded balance before the affected team or victim does. Registering a find is **off-chain and gasless**: the finder signs a plain message (EIP-191, via `signMessage`) agreeing to the fee schedule, and it's recorded in Supabase under a deterministic `find_key` — first writer wins, enforced by a unique constraint (`409` for anyone who tries to register the same find afterward). No victim signature is required at this stage; it only locks in *priority* on the 7% finder fee.
 
-- **Abuse case:** could a victim register themselves as their own finder to dodge the fee split? No — `registerClaim()` on-chain rejects `finder == victim` ([`SalvageRecoveryRouter.sol`](contracts-hardhat/contracts/SalvageRecoveryRouter.sol)), so even if an off-chain registration slipped through, the on-chain claim (and payout) can never settle with the finder and victim as the same address.
+- **Abuse case:** a victim can't register as their own finder — rejected off-chain (the API checks `finder !== victim` before writing) and on-chain (`registerClaim()` reverts on `finder == victim`, [`SalvageRecoveryRouter.sol`](contracts-hardhat/contracts/SalvageRecoveryRouter.sol)). What this *doesn't* stop: someone using a second wallet they also control as "finder" — no signature scheme can prove two addresses belong to different people, so this is an accepted, bounded risk (worth at most the gap between the two fee schedules above), not a solved one.
 - **Victim contact today is manual** — the finder reaches out with the app's generated outreach message. Automated reverse-lookup (Basename/ENS, Farcaster) is on the roadmap, not built yet.
 
 ### 🕵️ Did I Lose Tokens?
@@ -145,7 +147,8 @@ npx hardhat test
 
 ## Roadmap
 
-- **v1.1 — Owner Execution:** authorized contract owners execute supported recovery functions directly from Salvage. The app detects the rescue method in the ABI, prefills parameters (token, claim receiver, amount), shows the decoded call + raw calldata, and prepares the transaction for the owner to review and sign — no Etherscan spelunking, no ABI decoding.
+- **✅ v1.1 (partial) — Owner-gated on-chain recovery:** shipped. A wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
+- **v1.1 (remaining) — Decoded rescue calldata:** the app still doesn't detect the rescue method in the ABI, prefill its parameters, or show the decoded call + raw calldata. The owner has to construct that transaction themselves today — no Etherscan spelunking is eliminated yet, just the settlement side.
 - **v1.2 — Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
 - **Claims pipeline dashboard:** registered → funded → settled tracking, with live "all-time recovered" stats.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
