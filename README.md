@@ -53,6 +53,14 @@ Paste any ERC-20 contract on Ethereum or Base. Salvage:
 - Runs **recovery triage**: Is the contract verified? Does its ABI expose a rescue function (`rescueERC20()` and friends)? Is it an upgradeable proxy? Is there an owner who can act?
 - Verdict: **Recoverable · Needs Action · Unrecoverable** — plus a ready-to-send outreach message for the contract's team
 
+> **Triage caveat:** the scanner detects the *presence* of rescue functions and ownership patterns in the ABI — it does not verify whether the owner can or will actually act. A `rescueERC20()` gated behind a timelock, or an `owner()` pointing at a multisig that's lost its signers, still reads as "Recoverable" today. Treat the verdict as "a path plausibly exists," not a guarantee.
+
+### 🕵️ Finder registration
+Anyone can discover a stranded balance before the affected team or victim does. Registering a find is **off-chain and gasless**: the finder signs a plain message (EIP-191, via `signMessage`) agreeing to the fee schedule, and it's recorded in Supabase under a deterministic `find_key` — first writer wins, enforced by a unique constraint (`409` for anyone who tries to register the same find afterward). No victim signature is required at this stage; it only locks in *priority* on the 7% finder fee.
+
+- **Abuse case:** could a victim register themselves as their own finder to dodge the fee split? No — `registerClaim()` on-chain rejects `finder == victim` ([`SalvageRecoveryRouter.sol`](contracts-hardhat/contracts/SalvageRecoveryRouter.sol)), so even if an off-chain registration slipped through, the on-chain claim (and payout) can never settle with the finder and victim as the same address.
+- **Victim contact today is manual** — the finder reaches out with the app's generated outreach message. Automated reverse-lookup (Basename/ENS, Farcaster) is on the roadmap, not built yet.
+
 ### 🕵️ Did I Lose Tokens?
 Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
 

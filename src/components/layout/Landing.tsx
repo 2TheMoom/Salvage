@@ -1,34 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import SonarLogo from '@/components/ui/SonarLogo'
 
 interface LandingProps {
   onOpenDashboard: () => void
 }
 
+const PROOF_STEPS = [
+  {
+    num: '01',
+    title: 'The loss',
+    body: '1 DAI sent directly to the cbBTC token contract',
+    href: 'https://basescan.org/tx/0x7da304788c1fd9b2f02e8a313ea9c0881e5d34d28cbdc9943b367139535ca4c1',
+  },
+  {
+    num: '02',
+    title: 'Claim registered',
+    body: 'Victim signed an EIP-712 claim; router assigned a deterministic deposit address',
+    href: 'https://basescan.org/tx/0xd20241abf6f4bdddd91dbd72190a9a5037cd92920689e677a7a0265118601ae9',
+  },
+  {
+    num: '03',
+    title: 'Receiver funded',
+    body: "1 DAI rescued into the claim's deposit address",
+    href: 'https://basescan.org/tx/0x4654e00d88dff48ab91b7a4b9388e75e5d61fc8121b82bd6ab889acb702b1531',
+  },
+  {
+    num: '04',
+    title: 'Settlement',
+    body: 'Permissionless settle() — 0.95 DAI to victim, 0.05 DAI to protocol, one transaction',
+    href: 'https://basescan.org/tx/0x7c6ba90f73bec7accf15ec8f92bbf92fbd0e509685d5aa819ca26aca7c05b51b',
+  },
+]
+
 export default function Landing({ onOpenDashboard }: LandingProps) {
-  const [stats, setStats] = useState<{
-    totalStrandedUsd: number
-    recoverableUsd: number
-    recoveredAllTime: number
-    protocolFeesUsd: number
-    recoveredCount: number
-  } | null>(null)
-
-  useEffect(() => {
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => { if (d.success) setStats(d.stats) })
-      .catch(() => {})
-  }, [])
-
-  const fmtUsd = (v: number) =>
-    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(2)}M`
-    : v >= 1_000   ? `$${(v / 1_000).toFixed(1)}K`
-    : v > 0 && v < 1 ? `$${v.toFixed(2)}`
-    : `$${v.toFixed(0)}`
-
   return (
     <div id="landing">
       {/* Nav */}
@@ -172,28 +177,40 @@ export default function Landing({ onOpenDashboard }: LandingProps) {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="l-stats">
-        <div className="l-stats-inner">
-          <div className="l-stat">
-            <div className="l-stat-label">Total Stranded · ETH + Base</div>
-            <div className="l-stat-num">{stats ? fmtUsd(stats.totalStrandedUsd) : '—'}</div>
-            <div className="l-stat-sub">{stats ? 'Live from scanned contracts' : 'Loading…'}</div>
+      {/* Proof — a real recovery, not a live counter */}
+      <div className="l-light" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        <div className="l-light-inner">
+          <div className="section-eyebrow">Proof, not promises</div>
+          <h2 className="section-h2">
+            A real recovery on <span>Base mainnet.</span>
+          </h2>
+          <div className="proof-steps">
+            {PROOF_STEPS.map((step) => (
+              <a
+                key={step.num}
+                className="proof-step"
+                href={step.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="proof-step-num">{step.num}</div>
+                <div className="proof-step-title">{step.title}</div>
+                <div className="proof-step-body">{step.body}</div>
+                <div className="proof-step-link">Verify on Basescan ↗</div>
+              </a>
+            ))}
           </div>
-          <div className="l-stat">
-            <div className="l-stat-label">Recoverable Value</div>
-            <div className="l-stat-num accent">{stats ? fmtUsd(stats.recoverableUsd) : '—'}</div>
-            <div className="l-stat-sub">{stats ? 'With a rescue path today' : 'Loading…'}</div>
-          </div>
-          <div className="l-stat">
-            <div className="l-stat-label">All-Time Recovered</div>
-            <div className="l-stat-num">{stats ? fmtUsd(stats.recoveredAllTime) : '—'}</div>
-            <div className="l-stat-sub">{stats && stats.recoveredCount > 0 ? `${stats.recoveredCount} recovery settled on-chain` : 'No recoveries yet'}</div>
-          </div>
-          <div className="l-stat">
-            <div className="l-stat-label">Protocol Fees Earned</div>
-            <div className="l-stat-num accent">{stats ? fmtUsd(stats.protocolFeesUsd) : '—'}</div>
-            <div className="l-stat-sub">3–5% cut · on-chain to founder</div>
+
+          <div className="honest-note">
+            <div className="honest-note-title">An honest note on recovery</div>
+            <div className="honest-note-body">
+              Salvage finds stranded funds and builds the safest possible path to return
+              them — but recovery always requires the contract owner to act. No tool can
+              force it. What Salvage guarantees is that when an owner does act, settlement
+              is trustless, auditable, and nobody custodies anything. If anyone DMs you
+              promising guaranteed fund recovery for an upfront fee, it&apos;s a scam —
+              that&apos;s exactly the pattern this protocol was designed to make unnecessary.
+            </div>
           </div>
         </div>
       </div>

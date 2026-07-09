@@ -256,15 +256,34 @@ body {
 .how-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 .how-body { font-size: 0.83rem; color: var(--text-2); line-height: 1.68; }
 
-/* Stats strip */
-.l-stats { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.l-stats-inner { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: repeat(4,1fr); }
-.l-stat { padding: 34px 38px; border-right: 1px solid var(--border); }
-.l-stat:last-child { border-right: none; }
-.l-stat-label { font-family: var(--font-mono); font-size: 0.63rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); margin-bottom: 9px; }
-.l-stat-num { font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; letter-spacing: 0.01em; color: var(--text); margin-bottom: 4px; }
-.l-stat-num.accent { color: var(--eth); }
-.l-stat-sub { font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-3); }
+/* Proof strip — real, verifiable on-chain steps (no fabricated live counters) */
+.proof-steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 40px; }
+.proof-step {
+  display: block; text-decoration: none;
+  background: var(--card); border: 1px solid var(--border-md);
+  border-radius: 12px; padding: 24px 20px; box-shadow: var(--shadow);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.proof-step:hover { border-color: var(--eth-border); transform: translateY(-2px); }
+.proof-step-num {
+  font-family: var(--font-mono); font-size: 0.63rem; font-weight: 600;
+  letter-spacing: 0.12em; color: var(--eth); margin-bottom: 12px;
+}
+.proof-step-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.proof-step-body { font-size: 0.78rem; color: var(--text-2); line-height: 1.6; margin-bottom: 14px; }
+.proof-step-link { font-family: var(--font-mono); font-size: 0.63rem; font-weight: 600; color: var(--eth); }
+
+/* Honest note callout */
+.honest-note {
+  background: var(--amber-soft); border: 1px solid var(--amber-border);
+  border-radius: 12px; padding: 26px 30px;
+}
+.honest-note-title {
+  font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 10px;
+}
+.honest-note-body { font-size: 0.85rem; color: var(--text); line-height: 1.7; }
 
 /* CTA */
 .l-cta { background: var(--eth); padding: 72px 48px; text-align: center; }
@@ -462,8 +481,8 @@ body {
   .problem-cta-strip { flex-direction: column; gap: 20px; text-align: center; padding: 28px 24px; }
   .l-light { padding: 48px 20px; }
   .how-grid { grid-template-columns: 1fr; gap: 14px; }
-  .l-stats-inner { grid-template-columns: repeat(2,1fr); }
-  .l-stat { padding: 22px 20px; }
+  .proof-steps { grid-template-columns: repeat(2,1fr); }
+  .honest-note { padding: 20px 22px; }
   .l-cta { padding: 48px 20px; }
   .btn-cta-white, .btn-cta-outline { width: 100%; margin: 6px 0; display: block; }
   .l-footer { flex-direction: column; gap: 14px; padding: 24px 20px; text-align: center; }
@@ -495,7 +514,7 @@ body {
   .hero-h1 { font-size: 2.2rem; }
   .hero-tagline { font-size: 1.1rem; }
   .section-h2 { font-size: 1.9rem; }
-  .l-stats-inner { grid-template-columns: 1fr; }
+  .proof-steps { grid-template-columns: 1fr; }
   .d-stats { grid-template-columns: 1fr 1fr; }
 }
 
