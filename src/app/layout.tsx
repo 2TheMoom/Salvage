@@ -45,6 +45,10 @@ export const metadata: Metadata = {
   verification: process.env.GOOGLE_SITE_VERIFICATION
     ? { google: process.env.GOOGLE_SITE_VERIFICATION }
     : undefined,
+  other: {
+    // Base Dashboard domain-ownership verification for usesalvage.xyz
+    'base:app_id': '6a49d54329e0b587da6d8eec',
+  },
 }
 
 export default function RootLayout({
