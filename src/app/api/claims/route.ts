@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { corsJson, corsPreflight } from '@/lib/cors'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
+
+export async function OPTIONS(req: NextRequest) {
+  return corsPreflight(req)
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +18,7 @@ export async function POST(req: NextRequest) {
     } = body
 
     if (!claimId || !chain || !tokenAddress || !victimAddress || !lossTxHash || !receiverAddress) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
+      return corsJson(req, { success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
     const admin = createClient(
@@ -35,10 +40,10 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'claim_id' })
 
     if (error) throw error
-    return NextResponse.json({ success: true })
+    return corsJson(req, { success: true })
   } catch (err) {
     console.error('[/api/claims] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to record claim' }, { status: 500 })
+    return corsJson(req, { success: false, error: 'Failed to record claim' }, { status: 500 })
   }
 }
 
@@ -58,17 +63,17 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query
     if (error) throw error
-    return NextResponse.json({ success: true, claims: data })
+    return corsJson(req, { success: true, claims: data })
   } catch (err) {
     console.error('[/api/claims] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to fetch claims' }, { status: 500 })
+    return corsJson(req, { success: false, error: 'Failed to fetch claims' }, { status: 500 })
   }
 }
 export async function PATCH(req: NextRequest) {
   try {
     const { claimId, status, settleTx } = await req.json()
     if (!claimId || !status || !['funded', 'settled'].includes(status)) {
-      return NextResponse.json({ success: false, error: 'Invalid update' }, { status: 400 })
+      return corsJson(req, { success: false, error: 'Invalid update' }, { status: 400 })
     }
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,9 +88,9 @@ export async function PATCH(req: NextRequest) {
       .update(update)
       .eq('claim_id', claimId)
     if (error) throw error
-    return NextResponse.json({ success: true })
+    return corsJson(req, { success: true })
   } catch (err) {
     console.error('[/api/claims PATCH] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to update claim' }, { status: 500 })
+    return corsJson(req, { success: false, error: 'Failed to update claim' }, { status: 500 })
   }
 }

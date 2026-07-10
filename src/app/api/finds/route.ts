@@ -1,10 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyMessage } from 'viem'
 import { notifyVictimOfClaim } from '@/lib/notify'
+import { corsJson, corsPreflight } from '@/lib/cors'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
+
+export async function OPTIONS(req: NextRequest) {
+  return corsPreflight(req)
+}
 
 // First-finder-wins registration of a discovered stranded find.
 // Off-chain and victim-signature-free by design: this only locks in
@@ -20,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     if (!chain || !victimWallet || !tokenAddress || !lossTxHash ||
         !finderAddress || !signature || !message) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
+      return corsJson(req, { success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
     // A finder can never be the victim/loss wallet itself — the on-chain
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
     // would permanently squat this find's registration slot for a claim
     // that can never actually pay out. Reject it up front instead.
     if (finderAddress.toLowerCase() === victimWallet.toLowerCase()) {
-      return NextResponse.json(
+      return corsJson(req, 
         { success: false, error: 'You cannot register as the finder of your own loss.' },
         { status: 400 }
       )
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest) {
       signature: signature as `0x${string}`,
     })
     if (!valid) {
-      return NextResponse.json({ success: false, error: 'Invalid signature' }, { status: 401 })
+      return corsJson(req, { success: false, error: 'Invalid signature' }, { status: 401 })
     }
 
     const admin = createClient(
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       // Unique-violation = someone already claimed this find
       if (error.code === '23505') {
-        return NextResponse.json(
+        return corsJson(req, 
           { success: false, error: 'This find is already registered by another finder.' },
           { status: 409 }
         )
@@ -87,10 +92,10 @@ export async function POST(req: NextRequest) {
       valueUsd ?? 0
     ).catch((e) => console.error('[/api/finds] notify failed:', e))
 
-    return NextResponse.json({ success: true, findKey })
+    return corsJson(req, { success: true, findKey })
   } catch (err) {
     console.error('[/api/finds] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to register find' }, { status: 500 })
+    return corsJson(req, { success: false, error: 'Failed to register find' }, { status: 500 })
   }
 }
 
@@ -110,7 +115,7 @@ export async function GET(req: NextRequest) {
         .eq('find_key', findKey)
         .maybeSingle()
       if (error) throw error
-      return NextResponse.json({ success: true, find: data })
+      return corsJson(req, { success: true, find: data })
     }
 
     let query = supabase
@@ -122,9 +127,9 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query
     if (error) throw error
-    return NextResponse.json({ success: true, finds: data })
+    return corsJson(req, { success: true, finds: data })
   } catch (err) {
     console.error('[/api/finds] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to fetch finds' }, { status: 500 })
+    return corsJson(req, { success: false, error: 'Failed to fetch finds' }, { status: 500 })
   }
 }
