@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scanVictimWallet } from '@/lib/victim'
 import { isValidAddress } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/ratelimit'
 import { Chain, VictimScanApiResponse } from '@/types'
 
 // Never cache anything about this route — every scan must be live.
@@ -22,6 +23,14 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'victim-scan')
+    if (limited) {
+      return NextResponse.json<VictimScanApiResponse>(
+        { success: false, error: 'Too many scans — please wait a moment and try again.' },
+        { status: 429, headers: corsHeaders }
+      )
+    }
+
     const body = await req.json()
     const { address, chain } = body as { address: string; chain: Chain }
 

@@ -7,6 +7,13 @@ import { corsJson, corsPreflight } from '@/lib/cors'
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
 
+// A finder registration that never converts into a settled recovery within
+// this window is released — otherwise a single stale (or bot-squatted)
+// registration would lock a find_key forever, permanently blocking any
+// finder who could actually deliver the outreach. Matches the 90-day
+// window already stated elsewhere in the product's own copy.
+const FINDER_PRIORITY_MS = 90 * 24 * 60 * 60 * 1000
+
 export async function OPTIONS(req: NextRequest) {
   return corsPreflight(req)
 }
@@ -54,12 +61,13 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // find_key = the unique recovery this find refers to. First writer wins;
-    // a later finder hitting the same key is rejected by the unique constraint.
+    // find_key = the unique recovery this find refers to. First writer wins
+    // — but only while that registration is either recent or actually
+    // recovered; see the staleness check below.
     const findKey = findKeyOverride
       || `${chain}:${tokenAddress.toLowerCase()}:${lossTxHash.toLowerCase()}`
 
-    const { error } = await admin.from('salvage_finds').insert({
+    const findRow = {
       find_key:           findKey,
       chain,
       victim_wallet:      victimWallet.toLowerCase(),
@@ -70,17 +78,63 @@ export async function POST(req: NextRequest) {
       value_usd:          valueUsd ?? null,
       finder_address:     finderAddress.toLowerCase(),
       finder_signature:   signature,
-    })
+    }
 
-    if (error) {
-      // Unique-violation = someone already claimed this find
-      if (error.code === '23505') {
-        return corsJson(req, 
+    const { data: existing } = await admin
+      .from('salvage_finds')
+      .select('created_at')
+      .eq('find_key', findKey)
+      .maybeSingle()
+
+    if (existing) {
+      // Never reopen a find that already paid out — settlement is
+      // authoritative on salvage_claims, not the finds table's own status
+      // column, since nothing else keeps that column in sync.
+      const { data: settledClaim } = await admin
+        .from('salvage_claims')
+        .select('claim_id')
+        .eq('chain', chain)
+        .eq('token_address', tokenAddress.toLowerCase())
+        .eq('loss_tx_hash', lossTxHash)
+        .eq('status', 'settled')
+        .maybeSingle()
+
+      if (settledClaim) {
+        return corsJson(req,
+          { success: false, error: 'This find has already been recovered.' },
+          { status: 409 }
+        )
+      }
+
+      const ageMs = Date.now() - new Date(existing.created_at).getTime()
+      if (ageMs < FINDER_PRIORITY_MS) {
+        return corsJson(req,
           { success: false, error: 'This find is already registered by another finder.' },
           { status: 409 }
         )
       }
-      throw error
+
+      // Stale and never recovered — release it to the new finder.
+      const { error: updateError } = await admin
+        .from('salvage_finds')
+        .update({ ...findRow, created_at: new Date().toISOString() })
+        .eq('find_key', findKey)
+      if (updateError) throw updateError
+    } else {
+      const { error } = await admin.from('salvage_finds').insert(findRow)
+
+      if (error) {
+        // Unique-violation = a concurrent request won the race between our
+        // existence check above and this insert — same outcome as the
+        // recent-registration case.
+        if (error.code === '23505') {
+          return corsJson(req,
+            { success: false, error: 'This find is already registered by another finder.' },
+            { status: 409 }
+          )
+        }
+        throw error
+      }
     }
 
     // Fire-and-forget: notify the victim if they've opened the Salvage
