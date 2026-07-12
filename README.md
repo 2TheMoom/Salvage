@@ -147,8 +147,9 @@ npx hardhat test
 
 ## Roadmap
 
-- **✅ v1.1 (partial) — Owner-gated on-chain recovery:** shipped. A wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
-- **v1.1 (remaining) — Decoded rescue calldata:** the app still doesn't detect the rescue method in the ABI, prefill its parameters, or show the decoded call + raw calldata. The owner has to construct that transaction themselves today — no Etherscan spelunking is eliminated yet, just the settlement side.
+- **✅ v1.1 — Owner-gated on-chain recovery:** shipped. A wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
+- **✅ v1.1 — Decoded rescue calldata:** shipped. When triage detects a rescue function, the owner panel reads its *real* ABI signature (not a guessed shape) and shows a decoded call preview with editable, best-effort-prefilled parameters (token/recipient/amount matched by name + type — left blank rather than guessed wherever the mapping isn't confident), plus a raw calldata copy button. Deliberately stops there: Salvage constructs the *preview*, never sends the transaction — the owner remains the one who submits it, since it's a call into a contract Salvage doesn't control or audit.
+- **Rescue edge cases:** multiple candidate rescue functions on one contract, custom/uncommon parameter shapes, and timelock/multisig-owned contracts aren't specially handled yet — the current version covers the common single-rescue-function case well and leaves the rest to the editable fields.
 - **v1.2 — Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
 - **Claims pipeline dashboard:** registered → funded → settled tracking, with live "all-time recovered" stats.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.

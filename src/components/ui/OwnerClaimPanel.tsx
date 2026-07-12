@@ -4,12 +4,46 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain,
 } from 'wagmi'
-import { keccak256, encodeAbiParameters, zeroAddress } from 'viem'
+import { keccak256, encodeAbiParameters, encodeFunctionData, zeroAddress, type Abi } from 'viem'
 import {
   RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, ROUTER_EIP712_TYPES,
   routerDomain, USDC_ABI, contractScanLossTxHash,
 } from '@/lib/contracts'
-import { Chain, StrandedToken } from '@/types'
+import { Chain, StrandedToken, RescueAbiEntry } from '@/types'
+
+// Maps a rescue function's real ABI inputs to known values by name + type
+// heuristics — never a guess about what the contract *does*, only about
+// which declared parameter is likely the token/recipient/amount slot.
+// Anything not confidently matched is left blank for the owner to fill in
+// and verify themselves, rather than silently guessed.
+function mapRescueArgs(
+  inputs: { name: string; type: string }[],
+  tokenAddress: string,
+  receiverAddress: string,
+  amountRaw: string
+): string[] {
+  const addressInputs = inputs.filter((i) => i.type === 'address')
+  const uintInputs     = inputs.filter((i) => /^u?int/.test(i.type))
+
+  return inputs.map((input) => {
+    const n = input.name.toLowerCase()
+    if (input.type === 'address') {
+      if (/token/.test(n)) return tokenAddress
+      if (/to|recipient|receiver|dest|beneficiary/.test(n)) return receiverAddress
+      // A lone, unnamed address param on a rescue-style function is
+      // overwhelmingly "which token to rescue" in practice.
+      if (addressInputs.length === 1) return tokenAddress
+      return ''
+    }
+    if (/^u?int/.test(input.type)) {
+      if (/amount|amt|value|qty|quantity/.test(n) || uintInputs.length === 1) {
+        return amountRaw
+      }
+      return ''
+    }
+    return ''
+  })
+}
 
 const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453 }
 
@@ -18,6 +52,7 @@ interface OwnerClaimPanelProps {
   chain: Chain
   ownerAddress: string
   tokens: StrandedToken[]
+  rescueAbiEntry?: RescueAbiEntry
 }
 
 // Shown only to the wallet matching the contract's on-chain owner() — the
@@ -26,7 +61,7 @@ interface OwnerClaimPanelProps {
 // as anyone else produces a claim that can never be funded; the router
 // doesn't need to enforce that on-chain (same "front-running is harmless"
 // logic as everywhere else in this contract), so the gate lives here.
-export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, tokens }: OwnerClaimPanelProps) {
+export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, tokens, rescueAbiEntry }: OwnerClaimPanelProps) {
   const { address, isConnected } = useAccount()
   const isOwner = isConnected && address?.toLowerCase() === ownerAddress.toLowerCase()
 
@@ -81,6 +116,7 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
           ownerAddress={ownerAddress}
           finderAddress={registeredFinder}
           token={token}
+          rescueAbiEntry={rescueAbiEntry}
         />
       ))}
     </div>
@@ -93,11 +129,12 @@ interface OwnerClaimRowProps {
   ownerAddress: string
   finderAddress: string | null
   token: StrandedToken
+  rescueAbiEntry?: RescueAbiEntry
 }
 
 type RowState = 'idle' | 'signing' | 'registering' | 'registered' | 'settling' | 'settled' | 'error'
 
-function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, token }: OwnerClaimRowProps) {
+function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, token, rescueAbiEntry }: OwnerClaimRowProps) {
   const chainId = CHAIN_IDS[chain]
   const routerAddress = RECOVERY_ROUTER_ADDRESS[chainId]
 
@@ -160,6 +197,60 @@ function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, to
     query: { enabled: !!receiver && (!!alreadyRegistered || state === 'registered' || state === 'settled') },
   })
   const funded = (receiverBalance ?? 0n) > 0n
+
+  // Live balance of the stranded contract itself — this is the amount an
+  // owner would actually rescue, distinct from `receiverBalance` above
+  // (the claim's deposit address, which starts empty until the owner acts).
+  const { data: contractTokenBalance } = useReadContract({
+    address: token.tokenAddress as `0x${string}`,
+    abi: USDC_ABI,
+    functionName: 'balanceOf',
+    args: [contractAddress as `0x${string}`],
+    chainId,
+    query: { enabled: !!rescueAbiEntry && isRegistered && !isSettled },
+  })
+
+  // Editable per-argument values for the decoded rescue call — prefilled
+  // where the token/recipient/amount slot can be confidently identified,
+  // left blank otherwise so the owner fills in and verifies the rest.
+  const [argValues, setArgValues] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!rescueAbiEntry || !receiver) return
+    const amountRaw = (contractTokenBalance ?? BigInt(token.balance)).toString()
+    setArgValues(
+      mapRescueArgs(rescueAbiEntry.inputs, token.tokenAddress, receiver as string, amountRaw)
+    )
+  }, [rescueAbiEntry, receiver, contractTokenBalance, token.tokenAddress, token.balance])
+
+  const rescueCalldata = useMemo(() => {
+    if (!rescueAbiEntry) return null
+    try {
+      const args = rescueAbiEntry.inputs.map((input, i) => {
+        const raw = argValues[i] ?? ''
+        if (input.type === 'address') return raw as `0x${string}`
+        if (/^u?int/.test(input.type)) return BigInt(raw)
+        return raw
+      })
+      return encodeFunctionData({
+        abi: [rescueAbiEntry] as unknown as Abi,
+        functionName: rescueAbiEntry.name,
+        args,
+      })
+    } catch {
+      return null
+    }
+  }, [rescueAbiEntry, argValues])
+
+  const [calldataCopied, setCalldataCopied] = useState(false)
+  const copyCalldata = async () => {
+    if (!rescueCalldata) return
+    try {
+      await navigator.clipboard.writeText(rescueCalldata)
+      setCalldataCopied(true)
+      setTimeout(() => setCalldataCopied(false), 2000)
+    } catch { /* clipboard unavailable */ }
+  }
 
   const handleRegister = async () => {
     if (!claimId) return
@@ -324,6 +415,53 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
               </button>
             )}
           </div>
+
+          {!funded && rescueAbiEntry && (
+            <div style={{
+              marginTop: '8px', padding: '8px', borderRadius: '5px',
+              background: 'var(--card)', border: '1px dashed var(--border)',
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
+                Rescue call helper — {rescueAbiEntry.name}()
+              </div>
+              <div style={{ fontSize: '0.6rem', opacity: 0.75, marginBottom: '6px' }}>
+                Read from your contract&apos;s own ABI. Salvage can identify the
+                function but not confirm what each parameter does — verify
+                every value before using it.
+              </div>
+              {rescueAbiEntry.inputs.map((input, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '0.58rem', color: 'var(--text-3)', minWidth: '86px' }}>
+                    {input.name || `arg${i}`} <em style={{ fontStyle: 'normal', opacity: 0.6 }}>({input.type})</em>
+                  </span>
+                  <input
+                    value={argValues[i] ?? ''}
+                    onChange={(e) => {
+                      const next = [...argValues]
+                      next[i] = e.target.value
+                      setArgValues(next)
+                    }}
+                    placeholder="fill in and verify"
+                    style={{
+                      flex: 1, fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
+                      padding: '3px 6px', borderRadius: '4px',
+                      border: '1px solid var(--border)', background: 'var(--card-inner)',
+                      color: 'var(--text)', minWidth: 0,
+                    }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <button onClick={copyCalldata} disabled={!rescueCalldata}
+                  style={{ ...btnStyle, background: 'var(--card-inner)', color: 'var(--text)', opacity: rescueCalldata ? 1 : 0.5 }}>
+                  {calldataCopied ? '✓ Copied' : 'Copy Raw Calldata'}
+                </button>
+              </div>
+              <div style={{ fontSize: '0.58rem', color: 'var(--text-3)', marginTop: '5px' }}>
+                Send to contract: <span style={{ wordBreak: 'break-all' }}>{contractAddress}</span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <button onClick={handleRegister} disabled={state === 'signing' || state === 'registering'}

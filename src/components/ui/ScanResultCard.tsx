@@ -220,6 +220,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
             chain={result.chain}
             ownerAddress={result.ownerAddress}
             tokens={result.strandedTokens!}
+            rescueAbiEntry={result.rescueAbiEntry}
           />
         </div>
       )}

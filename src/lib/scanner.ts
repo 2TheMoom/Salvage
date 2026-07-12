@@ -1,4 +1,4 @@
-import { Chain, TriageCheck, TriageStatus, ScanResult } from '@/types'
+import { Chain, TriageCheck, TriageStatus, ScanResult, RescueAbiEntry } from '@/types'
 
 const RESCUE_SIGNATURES = [
   'rescueERC20', 'recoverERC20', 'withdrawToken', 'rescueTokens',
@@ -212,7 +212,7 @@ async function fetchDeployer(address: string, chain: Chain): Promise<string | un
 // ═══════════════════════════════════════════════════════════
 
 export function detectRescueFunction(abiJson: string): {
-  found: boolean; functionName?: string
+  found: boolean; functionName?: string; abiEntry?: RescueAbiEntry
 } {
   try {
     const abi = JSON.parse(abiJson)
@@ -222,7 +222,23 @@ export function detectRescueFunction(abiJson: string): {
       const match = RESCUE_SIGNATURES.find(
         sig => name.toLowerCase() === sig.toLowerCase()
       )
-      if (match) return { found: true, functionName: name }
+      if (match) {
+        // Read the real, verified signature — not a guessed shape — so a
+        // calldata preview can be built from what this specific contract
+        // actually declares, not an assumed common pattern.
+        const abiEntry: RescueAbiEntry = {
+          name,
+          type: 'function',
+          stateMutability: item.stateMutability || 'nonpayable',
+          inputs: Array.isArray(item.inputs)
+            ? item.inputs.map((i: { name?: string; type: string }) => ({
+                name: i.name || '',
+                type: i.type,
+              }))
+            : [],
+        }
+        return { found: true, functionName: name, abiEntry }
+      }
     }
   } catch { /* ignore */ }
   return { found: false }
@@ -401,14 +417,16 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
 
   let rescueFound   = false
   let rescueName:   string | undefined
+  let rescueAbiEntry: RescueAbiEntry | undefined
   let hasOwner      = false
   let isUpgradeable = !!proxyInfo.implementation || proxyInfo.proxyType === 'Beacon'
   let proxyType     = proxyInfo.proxyType
 
   if (mergedAbi) {
     const rescue = detectRescueFunction(mergedAbi)
-    rescueFound  = rescue.found
-    rescueName   = rescue.functionName
+    rescueFound    = rescue.found
+    rescueName     = rescue.functionName
+    rescueAbiEntry = rescue.abiEntry
     hasOwner     = detectOwner(mergedAbi)
 
     if (!isUpgradeable) {
@@ -439,6 +457,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     deployerAddress,
     implementationAddress: proxyInfo.implementation,
     ownerAddress,
+    rescueAbiEntry,
     triageStatus:          status,
     checks,
   }

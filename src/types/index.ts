@@ -11,6 +11,16 @@ export interface TriageCheck {
   detail: string
 }
 
+// ── The matched rescue function's real ABI entry — read directly from the
+// contract's verified ABI, not guessed. Enough shape to build a decoded
+// calldata preview with viem's encodeFunctionData.
+export interface RescueAbiEntry {
+  name: string
+  type: 'function'
+  stateMutability: string
+  inputs: { name: string; type: string }[]
+}
+
 // ── Full scan result
 export interface ScanResult {
   contractAddress: string
@@ -22,6 +32,7 @@ export interface ScanResult {
   deployerAddress?: string
   implementationAddress?: string
   ownerAddress?: string
+  rescueAbiEntry?: RescueAbiEntry
   triageStatus: TriageStatus
   checks: TriageCheck[]
   // M2: populated later
