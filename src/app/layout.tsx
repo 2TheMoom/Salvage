@@ -48,6 +48,8 @@ export const metadata: Metadata = {
   other: {
     // Base Dashboard domain-ownership verification for usesalvage.xyz
     'base:app_id': '6a49d54329e0b587da6d8eec',
+    // Talent Protocol project-ownership verification
+    'talentapp:project_verification': '806c873b24d6f2da76263bc2731fc72758cd1386e11cc736db5ce2b16b9230bf7837db7b1b395dc9bcb5fd17351d5899b4e59e14dc49a660374512c2fb56e91b',
   },
 }
 
