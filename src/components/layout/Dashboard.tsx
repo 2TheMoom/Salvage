@@ -7,7 +7,34 @@ import ScanResultCard from '@/components/ui/ScanResultCard'
 import VictimResultCard from '@/components/ui/VictimResultCard'
 import ConnectButton from '@/components/ui/ConnectButton'
 import { ScanResult, Chain, ScanApiResponse, VictimScanResult, VictimScanApiResponse } from '@/types'
-import { isValidAddress } from '@/lib/utils'
+import { isValidAddress, truncateAddress } from '@/lib/utils'
+
+type ActivityItem = {
+  type: 'find' | 'claim_registered' | 'claim_settled'
+  chain: string
+  tokenSymbol: string | null
+  valueUsd: number | null
+  address: string
+  txHash: string | null
+  timestamp: string
+}
+
+const ACTIVITY_LABEL: Record<ActivityItem['type'], string> = {
+  find: 'Find registered',
+  claim_registered: 'Claim registered',
+  claim_settled: 'Settled',
+}
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(ms / 60000)
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  return `${day}d ago`
+}
 
 const FOUNDER_ADDRESS = (
   process.env.NEXT_PUBLIC_FOUNDER_ADDRESS || ''
@@ -111,6 +138,19 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
     }
     fetchLeaderboard()
   }, [lbChain])
+
+  // Recent activity — a chronological feed rather than a ranked leaderboard,
+  // since real volume (finds/claims) is still low enough that a ranking
+  // would show one entry and read as dead rather than new.
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [activityLoading, setActivityLoading] = useState(true)
+  useEffect(() => {
+    fetch('/api/activity')
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setActivity(d.items || []) })
+      .catch(() => {})
+      .finally(() => setActivityLoading(false))
+  }, [])
 
   const runScan = useCallback(async (addr: string, scanChain: Chain, scanMode: 'contract' | 'victim') => {
     if (!isValidAddress(addr)) {
@@ -469,6 +509,64 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   </button>
                 )}
               </>
+            )}
+          </div>
+
+          {/* Recent Activity — chronological, not ranked; see note above */}
+          <div className="s-card">
+            <div className="s-head">
+              <div>
+                <div className="s-title">Recent Activity</div>
+                <div className="s-sub">{activityLoading ? 'Loading…' : 'Finds and claims, live'}</div>
+              </div>
+            </div>
+
+            {activityLoading ? (
+              <div style={{
+                padding: '32px 22px', textAlign: 'center',
+                fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+                color: 'var(--text-3)',
+              }}>
+                Loading…
+              </div>
+            ) : activity.length === 0 ? (
+              <div style={{
+                padding: '32px 22px', textAlign: 'center',
+                fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+                color: 'var(--text-3)', lineHeight: 1.6,
+              }}>
+                No activity yet.<br />Be the first to register a find or claim.
+              </div>
+            ) : (
+              activity.map((item, i) => {
+                const explorer = item.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+                return (
+                  <div key={i} className="lb-row" style={{ cursor: item.txHash ? 'pointer' : 'default' }}
+                    onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}
+                    title={item.txHash ? 'View transaction' : undefined}
+                  >
+                    <div className="lb-rank" style={{
+                      background: item.type === 'claim_settled' ? 'var(--green-soft)' : 'var(--eth-soft)',
+                      color: item.type === 'claim_settled' ? 'var(--green)' : 'var(--eth)',
+                    }}>
+                      {item.type === 'find' ? '🔍' : item.type === 'claim_registered' ? '📝' : '✅'}
+                    </div>
+                    <div className="lb-info">
+                      <div className="lb-addr">
+                        {ACTIVITY_LABEL[item.type]} · {item.tokenSymbol || 'tokens'}
+                      </div>
+                      <div className="lb-desc">
+                        {truncateAddress(item.address)} · {timeAgo(item.timestamp)}
+                      </div>
+                    </div>
+                    <div className="lb-right">
+                      <div className="lb-usd">
+                        {item.valueUsd != null ? formatUsdShort(item.valueUsd) : '—'}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
 
