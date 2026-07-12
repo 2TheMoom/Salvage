@@ -90,7 +90,7 @@ Recovery never depends on trusting anyone:
 | **SalvageRecoveryRouter** | [`0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25`](https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code) | [`0x2240792d1A9D964d238bD693fCb09586B10faEdf`](https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code) |
 | **SalvageFeeContract** | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://etherscan.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://basescan.org/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) |
 
-Both routers verified on **Etherscan/Basescan, Blockscout, and Sourcify**.
+Both contracts verified on **Etherscan/Basescan, Blockscout, and Sourcify**.
 
 ## Security model
 
