@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useReadContract, useWriteContract, useSwitchChain } from 'wagmi'
+import { waitForTransactionReceipt } from 'wagmi/actions'
+import { config } from '@/lib/wagmi'
 import { RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, USDC_ABI } from '@/lib/contracts'
 import { Chain } from '@/types'
 
-const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453 }
+const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
 interface OwnedContract {
   contract_address: string
@@ -200,11 +202,13 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
         chainId,
       })
       setSettleTx(hash)
-      fetch('/api/claims', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claimId: claim.claim_id, status: 'settled', settleTx: hash }),
-      }).catch(() => {})
+      waitForTransactionReceipt(config, { hash, chainId })
+        .then(() => fetch('/api/claims', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ claimId: claim.claim_id, settleTx: hash }),
+        }))
+        .catch(() => {})
       refetch()
     } catch (err) {
       setError(

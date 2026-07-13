@@ -5,14 +5,16 @@ import {
   useAccount, useSignTypedData, useSignMessage, useWriteContract,
   useReadContract, useSwitchChain,
 } from 'wagmi'
+import { waitForTransactionReceipt } from 'wagmi/actions'
 import { keccak256, encodeAbiParameters, zeroAddress } from 'viem'
+import { config } from '@/lib/wagmi'
 import {
   RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, ROUTER_EIP712_TYPES,
   routerDomain, USDC_ABI,
 } from '@/lib/contracts'
 import { VictimFinding, Chain } from '@/types'
 
-const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453 }
+const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
 interface RecoveryClaimPanelProps {
   finding: VictimFinding
@@ -222,22 +224,21 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
         chainId,
       })
 
-      // Record in Salvage's claim registry (non-blocking for the user)
-      fetch('/api/claims', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          claimId, chain,
-          tokenAddress:    finding.tokenAddress,
-          tokenSymbol:     finding.tokenSymbol,
-          victimAddress:   victimWallet,
-          finderAddress:   hasFinder ? finderForClaim : null,
-          lossTxHash:      finding.txHash,
-          receiverAddress: receiver,
-          valueUsd:        finding.valueUsd,
-          registerTx:      txHash,
-        }),
-      }).catch(() => {})
+      // The API verifies the claim on-chain before recording it, so it won't
+      // find anything until this tx actually confirms — wait for the receipt
+      // first instead of firing right after the wallet merely broadcasts it.
+      waitForTransactionReceipt(config, { hash: txHash, chainId })
+        .then(() => fetch('/api/claims', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            claimId, chain,
+            tokenSymbol: finding.tokenSymbol,
+            valueUsd:    finding.valueUsd,
+            registerTx:  txHash,
+          }),
+        }))
+        .catch(() => {})
 
       setRegisterTx(txHash)
       setState('registered')
@@ -266,11 +267,13 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
       })
       setSettleTx(settleHash)
       // Mark settled in the claims registry (non-blocking)
-      fetch('/api/claims', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claimId, status: 'settled', settleTx: settleHash }),
-      }).catch(() => {})
+      waitForTransactionReceipt(config, { hash: settleHash, chainId })
+        .then(() => fetch('/api/claims', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ claimId, settleTx: settleHash }),
+        }))
+        .catch(() => {})
       setState('settled')
       refetchBalance()
     } catch (err: unknown) {

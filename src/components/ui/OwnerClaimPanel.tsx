@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain,
 } from 'wagmi'
+import { waitForTransactionReceipt } from 'wagmi/actions'
 import { keccak256, encodeAbiParameters, encodeFunctionData, zeroAddress, type Abi } from 'viem'
+import { config } from '@/lib/wagmi'
 import {
   RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, ROUTER_EIP712_TYPES,
   routerDomain, USDC_ABI, contractScanLossTxHash,
@@ -45,7 +47,7 @@ function mapRescueArgs(
   })
 }
 
-const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453 }
+const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
 interface OwnerClaimPanelProps {
   contractAddress: string
@@ -288,21 +290,22 @@ function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, to
         chainId,
       })
 
-      fetch('/api/claims', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          claimId, chain,
-          tokenAddress:    token.tokenAddress,
-          tokenSymbol:     token.tokenSymbol,
-          victimAddress:   ownerAddress,
-          finderAddress:   hasFinder ? finderForClaim : null,
-          lossTxHash,
-          receiverAddress: receiver,
-          valueUsd:        token.valueUsd,
-          registerTx:      txHash,
-        }),
-      }).catch(() => {})
+      // The API now verifies the claim directly on-chain before recording it
+      // (see /api/claims), so it won't find anything until this tx actually
+      // confirms — wait for the receipt first instead of firing right after
+      // the wallet merely broadcasts it.
+      waitForTransactionReceipt(config, { hash: txHash, chainId })
+        .then(() => fetch('/api/claims', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            claimId, chain,
+            tokenSymbol: token.tokenSymbol,
+            valueUsd:    token.valueUsd,
+            registerTx:  txHash,
+          }),
+        }))
+        .catch(() => {})
 
       setRegisterTx(txHash)
       setState('registered')
@@ -330,11 +333,13 @@ function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, to
         chainId,
       })
       setSettleTx(settleHash)
-      fetch('/api/claims', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claimId, status: 'settled', settleTx: settleHash }),
-      }).catch(() => {})
+      waitForTransactionReceipt(config, { hash: settleHash, chainId })
+        .then(() => fetch('/api/claims', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ claimId, settleTx: settleHash }),
+        }))
+        .catch(() => {})
       setState('settled')
       refetchBalance()
     } catch (err: unknown) {

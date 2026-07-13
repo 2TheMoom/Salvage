@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyMessage } from 'viem'
 import { notifyVictimOfClaim } from '@/lib/notify'
 import { corsJson, corsPreflight } from '@/lib/cors'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -24,6 +25,11 @@ export async function OPTIONS(req: NextRequest) {
 // with the victim's own EIP-712 signature, happens later at settlement.
 export async function POST(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'finds-post')
+    if (limited) {
+      return corsJson(req, { success: false, error: 'Too many requests — please wait a moment.' }, { status: 429 })
+    }
+
     const {
       chain, victimWallet, tokenAddress, tokenSymbol, lossTxHash,
       recipientContract, valueUsd, finderAddress, signature, message,

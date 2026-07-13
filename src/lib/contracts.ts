@@ -1,4 +1,6 @@
-import { keccak256, encodePacked } from 'viem'
+import { keccak256, encodePacked, createPublicClient, http, zeroAddress } from 'viem'
+import { mainnet, base } from 'viem/chains'
+import { Chain } from '@/types'
 
 // Contract addresses — same on both chains
 export const FEE_CONTRACT_ADDRESS = '0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27' as const
@@ -242,4 +244,60 @@ export function contractScanLossTxHash(contractAddress: string): `0x${string}` {
     ['string', 'address'],
     ['salvage-contract-scan', contractAddress as `0x${string}`]
   ))
+}
+
+const CHAIN_ID: Record<Chain, number> = { eth: 1, base: 8453 }
+
+const CLAIM_RPC_URL: Record<Chain, string | undefined> = {
+  eth:  process.env.ALCHEMY_ETH_RPC,
+  base: process.env.ALCHEMY_BASE_RPC,
+}
+
+function getServerPublicClient(chain: Chain) {
+  return createPublicClient({
+    chain: chain === 'eth' ? mainnet : base,
+    transport: http(CLAIM_RPC_URL[chain]),
+  })
+}
+
+export interface OnChainClaim {
+  token:        `0x${string}`
+  victim:       `0x${string}`
+  finder:       `0x${string}`
+  lossTxHash:   `0x${string}`
+  totalSettled: bigint
+  receiver:     `0x${string}`
+}
+
+// Server-side source of truth for a claim's identity and settlement state —
+// never trust claimId/victim/finder/token/receiver as submitted by a client,
+// since /api/claims has no signature check of its own (unlike /api/finds).
+// Reading directly from the router contract means a caller can only ever
+// record a claim that genuinely exists on-chain, with the real addresses.
+export async function readOnChainClaim(
+  chain: Chain,
+  claimId: `0x${string}`
+): Promise<OnChainClaim | null> {
+  const client = getServerPublicClient(chain)
+  const address = RECOVERY_ROUTER_ADDRESS[CHAIN_ID[chain]]
+
+  const [claimData, receiver] = await Promise.all([
+    client.readContract({
+      address,
+      abi: ROUTER_ABI,
+      functionName: 'claims',
+      args: [claimId],
+    }),
+    client.readContract({
+      address,
+      abi: ROUTER_ABI,
+      functionName: 'claimReceiver',
+      args: [claimId],
+    }),
+  ])
+
+  const [token, victim, finder, lossTxHash, , totalSettled] = claimData
+  if (victim === zeroAddress) return null
+
+  return { token, victim, finder, lossTxHash, totalSettled, receiver }
 }
