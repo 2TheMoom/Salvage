@@ -27,11 +27,25 @@ export default function ConnectButton({
   const { disconnect }                    = useDisconnect()
   const { signMessage, isPending: signing } = useSignMessage()
 
-  const [showMenu,   setShowMenu]   = useState(false)
-  const [verified,   setVerified]   = useState(false)
-  const [verifying,  setVerifying]  = useState(false)
-  const [signError,  setSignError]  = useState<string | null>(null)
-  const [jiggling,   setJiggling]   = useState(false)
+  const [showMenu,      setShowMenu]      = useState(false)
+  const [verified,      setVerified]      = useState(false)
+  const [verifying,     setVerifying]     = useState(false)
+  const [signError,     setSignError]     = useState<string | null>(null)
+  const [jiggling,      setJiggling]      = useState(false)
+  // WalletConnect's teardown is a network round-trip to the relay (unlike
+  // injected/Coinbase, which disconnect near-instantly) — without this flag,
+  // the brief window where isConnected is still true but verified has been
+  // reset to false falls into the "awaiting signature" branch below and gets
+  // stuck showing "Requesting signature…" for as long as that round-trip takes.
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const handleDisconnect = () => {
+    setShowMenu(false)
+    setVerified(false)
+    setSignError(null)
+    setDisconnecting(true)
+    disconnect(undefined, { onSettled: () => setDisconnecting(false) })
+  }
 
   // A rejected/failed connection attempt shouldn't dead-end silently —
   // jiggle the button so it's obvious something needs retrying, instead of
@@ -107,7 +121,7 @@ export default function ConnectButton({
     : null
 
   // ── Connected + verified
-  if (isConnected && address && verified) {
+  if (!disconnecting && isConnected && address && verified) {
     return (
       <div style={{ position: 'relative' }}>
         <div
@@ -161,7 +175,7 @@ export default function ConnectButton({
                 </div>
               )}
               <button
-                onClick={() => { disconnect(); setShowMenu(false); setVerified(false) }}
+                onClick={handleDisconnect}
                 style={{
                   width: '100%', textAlign: 'left',
                   fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
@@ -187,7 +201,7 @@ export default function ConnectButton({
   }
 
   // ── Connected but awaiting signature
-  if (isConnected && address && !verified) {
+  if (!disconnecting && isConnected && address && !verified) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {signError ? (
@@ -207,7 +221,7 @@ export default function ConnectButton({
               Sign Again
             </button>
             <button
-              onClick={() => { disconnect(); setVerified(false); setSignError(null) }}
+              onClick={handleDisconnect}
               style={{
                 fontFamily: 'var(--font-mono)', fontSize: '0.67rem',
                 color: 'rgba(255,255,255,0.35)', background: 'transparent',
@@ -281,7 +295,7 @@ export default function ConnectButton({
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <span style={{ fontSize: '1.1rem' }}>🦊</span> MetaMask
+            <img src="/wallet-icons/metamask.svg" alt="" width={18} height={18} /> MetaMask
           </button>
 
           <button
@@ -305,7 +319,7 @@ export default function ConnectButton({
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <span style={{ fontSize: '1.1rem' }}>🔵</span> Coinbase Wallet
+            <img src="/wallet-icons/coinbase.svg" alt="" width={18} height={18} /> Coinbase Wallet
           </button>
 
           {WALLETCONNECT_PROJECT_ID && (
@@ -341,7 +355,7 @@ export default function ConnectButton({
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ fontSize: '1.1rem' }}>🔗</span> WalletConnect
+              <img src="/wallet-icons/walletconnect.svg" alt="" width={18} height={18} /> WalletConnect
             </button>
           )}
         </div>
