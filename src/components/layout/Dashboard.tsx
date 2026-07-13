@@ -82,8 +82,14 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
   const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
   const [lbLoading, setLbLoading]     = useState(false)
   const [lbExpanded, setLbExpanded]   = useState(false)
+  // Leaderboard and Activity share the exact same row layout and both browse
+  // the protocol's public state (ranked vs. chronological) — one tabbed card
+  // instead of two stacked panels with duplicate chrome.
+  const [sidebarTab, setSidebarTab]   = useState<'leaderboard' | 'activity'>('leaderboard')
   const [stats, setStats]             = useState<{
     totalStrandedUsd: number
+    strandedEthUsd: number
+    strandedBaseUsd: number
     recoverableUsd: number
     recoverableCount: number
     contractsIndexed: number
@@ -248,7 +254,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
         </div>
         <ul className="d-nav-links">
           <li><a href="#" className="on" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Scanner</a></li>
-          <li><a href="#leaderboard" onClick={(e) => { e.preventDefault(); document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' }) }}>Leaderboard</a></li>
+          <li><a href="#leaderboard" onClick={(e) => { e.preventDefault(); setSidebarTab('leaderboard'); document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' }) }}>Leaderboard</a></li>
           <li><a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a></li>
         </ul>
         <div className="d-nav-right">
@@ -262,7 +268,9 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
           <div className="d-stat-label">Total Stranded · ETH+Base</div>
           <div className="d-stat-num">{stats ? formatUsdShort(stats.totalStrandedUsd) : '—'}</div>
           <div className="d-stat-sub">
-            {stats ? `Across ${stats.contractsIndexed} indexed contracts` : 'Loading…'}
+            {stats
+              ? `ETH ${formatUsdShort(stats.strandedEthUsd)} · Base ${formatUsdShort(stats.strandedBaseUsd)} · ${stats.contractsIndexed} contracts`
+              : 'Loading…'}
           </div>
         </div>
         <div className="d-stat">
@@ -440,28 +448,48 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
         {/* Sidebar */}
         <div className="d-sidebar">
 
-          {/* Leaderboard */}
+          {/* Leaderboard / Activity — one tabbed card; see note above */}
           <div className="s-card" id="leaderboard">
             <div className="s-head">
               <div>
-                <div className="s-title">Stranded Leaderboard</div>
+                <div className="s-title">
+                  {sidebarTab === 'leaderboard' ? 'Stranded Leaderboard' : 'Recent Activity'}
+                </div>
                 <div className="s-sub">
-                  {lbLoading ? 'Loading…' : 'Click row to scan'}
+                  {sidebarTab === 'leaderboard'
+                    ? (lbLoading ? 'Loading…' : 'Click row to scan')
+                    : (activityLoading ? 'Loading…' : 'Finds and claims, live')}
                 </div>
               </div>
               <div className="s-tabs">
                 <button
-                  className={`s-tab ${lbChain === 'eth' ? 'on' : ''}`}
-                  onClick={() => setLbChain('eth')}
-                >ETH</button>
+                  className={`s-tab ${sidebarTab === 'leaderboard' ? 'on' : ''}`}
+                  onClick={() => setSidebarTab('leaderboard')}
+                >Leaderboard</button>
                 <button
-                  className={`s-tab ${lbChain === 'base' ? 'on' : ''}`}
-                  onClick={() => setLbChain('base')}
-                >Base</button>
+                  className={`s-tab ${sidebarTab === 'activity' ? 'on' : ''}`}
+                  onClick={() => setSidebarTab('activity')}
+                >Activity</button>
               </div>
             </div>
 
-            {lbLoading ? (
+            {sidebarTab === 'leaderboard' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 22px 0' }}>
+                <div className="s-tabs">
+                  <button
+                    className={`s-tab ${lbChain === 'eth' ? 'on' : ''}`}
+                    onClick={() => setLbChain('eth')}
+                  >ETH</button>
+                  <button
+                    className={`s-tab ${lbChain === 'base' ? 'on' : ''}`}
+                    onClick={() => setLbChain('base')}
+                  >Base</button>
+                </div>
+              </div>
+            )}
+
+            {sidebarTab === 'leaderboard' ? (
+            lbLoading ? (
               <div style={{
                 padding: '32px 22px', textAlign: 'center',
                 fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
@@ -524,19 +552,9 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   </button>
                 )}
               </>
-            )}
-          </div>
-
-          {/* Recent Activity — chronological, not ranked; see note above */}
-          <div className="s-card">
-            <div className="s-head">
-              <div>
-                <div className="s-title">Recent Activity</div>
-                <div className="s-sub">{activityLoading ? 'Loading…' : 'Finds and claims, live'}</div>
-              </div>
-            </div>
-
-            {activityLoading ? (
+            )
+            ) : (
+            activityLoading ? (
               <div style={{
                 padding: '32px 22px', textAlign: 'center',
                 fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
@@ -582,6 +600,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   </div>
                 )
               })
+            )
             )}
           </div>
 

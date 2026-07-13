@@ -18,13 +18,17 @@ export async function GET() {
 
     if (error) throw error
 
-    let totalStrandedUsd = 0
-    let recoverableUsd   = 0
-    let recoverableCount = 0
+    let totalStrandedUsd  = 0
+    let strandedEthUsd    = 0
+    let strandedBaseUsd   = 0
+    let recoverableUsd    = 0
+    let recoverableCount  = 0
 
     for (const row of data || []) {
       const value = parseFloat(row.stranded_value_usd) || 0
       totalStrandedUsd += value
+      if (row.chain === 'eth') strandedEthUsd += value
+      else if (row.chain === 'base') strandedBaseUsd += value
       if (row.triage_status === 'recoverable' || row.triage_status === 'needs_action') {
         recoverableUsd += value
         recoverableCount++
@@ -60,6 +64,8 @@ export async function GET() {
       success: true,
       stats: {
         totalStrandedUsd,
+        strandedEthUsd,
+        strandedBaseUsd,
         recoverableUsd,
         recoverableCount,
         contractsIndexed: (data || []).length,
