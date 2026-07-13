@@ -32,11 +32,14 @@ export default function ConnectButton({
   const [verifying,     setVerifying]     = useState(false)
   const [signError,     setSignError]     = useState<string | null>(null)
   const [jiggling,      setJiggling]      = useState(false)
-  // WalletConnect's teardown is a network round-trip to the relay (unlike
-  // injected/Coinbase, which disconnect near-instantly) — without this flag,
-  // the brief window where isConnected is still true but verified has been
-  // reset to false falls into the "awaiting signature" branch below and gets
-  // stuck showing "Requesting signature…" for as long as that round-trip takes.
+  // How fast wagmi's internal isConnected flips to false after disconnect()
+  // varies by connector (near-instant for injected/Coinbase, a relay round-trip
+  // for WalletConnect) and isn't something we can reliably wait on. So once the
+  // user disconnects, this flag pins the UI to the idle state regardless of
+  // isConnected's timing, and only clears when they explicitly start a new
+  // connection — never automatically, since resetting it off any async signal
+  // (isConnected changing, disconnect()'s promise settling) reopens the same
+  // race that caused the "stuck on Requesting Signature" bug in the first place.
   const [disconnecting, setDisconnecting] = useState(false)
 
   const handleDisconnect = () => {
@@ -44,7 +47,7 @@ export default function ConnectButton({
     setVerified(false)
     setSignError(null)
     setDisconnecting(true)
-    disconnect(undefined, { onSettled: () => setDisconnecting(false) })
+    disconnect()
   }
 
   // A rejected/failed connection attempt shouldn't dead-end silently —
@@ -63,6 +66,11 @@ export default function ConnectButton({
   // landing↔dashboard navigation must never demand a fresh signature.
   useEffect(() => {
     setSignError(null)
+    // Skip while a disconnect is pinned — some wallets (MetaMask's injected
+    // provider in particular) can report isConnected/address as still set for
+    // a moment after disconnect() is called, and auto-triggering a fresh sign
+    // request in that window is exactly the stuck-UI bug this flag exists to prevent.
+    if (disconnecting) return
     if (isConnected && address) {
       const key   = `salvage_verified_${address.toLowerCase()}`
       const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null
@@ -77,7 +85,7 @@ export default function ConnectButton({
       setVerified(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, isConnected])
+  }, [address, isConnected, disconnecting])
 
   // Notify parent
   useEffect(() => {
@@ -279,6 +287,7 @@ export default function ConnectButton({
 
           <button
             onClick={() => {
+              setDisconnecting(false)
               connect({ connector: injected() }, { onError: () => triggerJiggle() })
               setShowMenu(false)
             }}
@@ -300,6 +309,7 @@ export default function ConnectButton({
 
           <button
             onClick={() => {
+              setDisconnecting(false)
               connect(
                 { connector: coinbaseWallet({ appName: 'Salvage' }) },
                 { onError: () => triggerJiggle() }
@@ -325,6 +335,7 @@ export default function ConnectButton({
           {WALLETCONNECT_PROJECT_ID && (
             <button
               onClick={() => {
+                setDisconnecting(false)
                 connect(
                   {
                     connector: walletConnect({
