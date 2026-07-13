@@ -6,6 +6,7 @@ import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
 import VictimResultCard from '@/components/ui/VictimResultCard'
 import ConnectButton from '@/components/ui/ConnectButton'
+import OwnerStatusPanel from '@/components/ui/OwnerStatusPanel'
 import { ScanResult, Chain, ScanApiResponse, VictimScanResult, VictimScanApiResponse } from '@/types'
 import { isValidAddress, truncateAddress } from '@/lib/utils'
 
@@ -293,6 +294,20 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
           <div className="d-stat-sub">3–5% of all recoveries</div>
         </div>
       </div>
+
+      {connectedWallet && (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 40px 0' }}>
+          <OwnerStatusPanel
+            wallet={connectedWallet}
+            onViewContract={(addr, viewChain) => {
+              setMode('contract')
+              setChain(viewChain)
+              setInputAddr(addr)
+              runScan(addr, viewChain, 'contract')
+            }}
+          />
+        </div>
+      )}
 
       {/* Main layout */}
       <div className="d-main">

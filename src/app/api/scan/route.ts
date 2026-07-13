@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
             stranded_value_usd: totalStrandedUsd,
             triage_status:      result.triageStatus,
             deployer_address:   result.deployerAddress || null,
+            owner_address:      result.ownerAddress || null,
             last_scanned_at:    new Date().toISOString(),
           }, {
             onConflict: 'contract_address,chain',
