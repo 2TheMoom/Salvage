@@ -1,8 +1,10 @@
 'use client'
 
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
-import { injected, coinbaseWallet } from '@wagmi/connectors'
+import { injected, coinbaseWallet, walletConnect } from '@wagmi/connectors'
 import { useState, useEffect } from 'react'
+
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 
 const FOUNDER_ADDRESS = (
   process.env.NEXT_PUBLIC_FOUNDER_ADDRESS || ''
@@ -305,6 +307,43 @@ export default function ConnectButton({
           >
             <span style={{ fontSize: '1.1rem' }}>🔵</span> Coinbase Wallet
           </button>
+
+          {WALLETCONNECT_PROJECT_ID && (
+            <button
+              onClick={() => {
+                connect(
+                  {
+                    connector: walletConnect({
+                      projectId: WALLETCONNECT_PROJECT_ID,
+                      metadata: {
+                        name: 'Salvage',
+                        description: 'Recover ERC-20 tokens stranded in smart contracts',
+                        url: 'https://usesalvage.xyz',
+                        icons: ['https://usesalvage.xyz/icon-512.png'],
+                      },
+                      showQrModal: true,
+                    }),
+                  },
+                  { onError: () => triggerJiggle() }
+                )
+                setShowMenu(false)
+              }}
+              disabled={isPending}
+              style={{
+                width: '100%', textAlign: 'left',
+                fontFamily: 'var(--font-body)', fontSize: '0.82rem',
+                color: 'rgba(255,255,255,0.8)',
+                background: 'transparent', border: 'none',
+                padding: '10px', borderRadius: '6px',
+                cursor: 'pointer', transition: 'background 0.15s',
+                display: 'flex', alignItems: 'center', gap: '10px',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ fontSize: '1.1rem' }}>🔗</span> WalletConnect
+            </button>
+          )}
         </div>
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 199 }}
