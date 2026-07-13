@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useSignMessage, useConnect } from 'wagmi'
 import { injected } from '@wagmi/connectors'
+import { contractScanLossTxHash } from '@/lib/contracts'
 import { Chain } from '@/types'
 
 interface RegisterFindButtonProps {
@@ -114,7 +115,11 @@ export default function RegisterFindButton({
           victimWallet:      contractAddress,   // contract is the locus; no single victim
           tokenAddress:      token,
           tokenSymbol:       null,
-          lossTxHash:        'contract-scan',   // sentinel: contract-level find
+          // Must match the same derived hash OwnerClaimPanel uses on-chain
+          // for this contract — otherwise the off-chain find and the
+          // eventual on-chain claim can never be cross-referenced to tell
+          // a finder whether their registration actually got credited.
+          lossTxHash:        contractScanLossTxHash(contractAddress),
           recipientContract: contractAddress,
           valueUsd:          null,
           finderAddress:     address,

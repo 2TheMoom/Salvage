@@ -27,30 +27,62 @@ interface PendingClaim {
   status: string
 }
 
+type FinderClaimStatus =
+  | 'pending'
+  | 'registered_for_you'
+  | 'settled_for_you'
+  | 'claimed_without_you'
+  | 'settled_without_you'
+
+interface FinderFind {
+  findKey: string
+  chain: string
+  tokenSymbol: string | null
+  valueUsd: number | null
+  recipientContract: string
+  createdAt: string
+  claimStatus: FinderClaimStatus
+  registerTx: string | null
+  settleTx: string | null
+}
+
+const FINDER_STATUS_COPY: Record<FinderClaimStatus, { label: string; color: string }> = {
+  pending:              { label: 'Priority locked — waiting on the victim/owner to register a claim', color: 'var(--text-2)' },
+  registered_for_you:   { label: 'Claim registered — crediting you, awaiting settlement', color: 'var(--eth)' },
+  settled_for_you:      { label: '✓ Settled — your 7% has been paid out', color: 'var(--green)' },
+  claimed_without_you:  { label: 'A claim was registered without crediting you', color: 'var(--crimson)' },
+  settled_without_you:  { label: 'Settled without crediting you', color: 'var(--crimson)' },
+}
+
 interface OwnerStatusPanelProps {
   wallet: string
   onViewContract: (address: string, chain: Chain) => void
 }
 
-// Surfaces only what Salvage already knows about this wallet — contracts it
-// has previously scanned where this address is the on-chain owner(), and
-// claims where this wallet is the registered beneficiary and not yet
-// settled. Pure DB lookups, never a live re-scan (that would undo the
-// rate-limiting work and re-burn Alchemy/Etherscan quota on every connect).
+// Surfaces only what Salvage already knows about this wallet, across all
+// three roles it might play: contracts it owns (previously scanned, matched
+// by on-chain owner()), claims where it's the beneficiary and not yet
+// settled, and finds it registered as a finder. Pure DB lookups, never a
+// live re-scan (that would undo the rate-limiting work and re-burn
+// Alchemy/Etherscan quota on every connect).
 export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatusPanelProps) {
   const [ownedContracts, setOwnedContracts] = useState<OwnedContract[]>([])
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([])
+  const [finderFinds, setFinderFinds] = useState<FinderFind[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     setLoaded(false)
-    fetch(`/api/owner-status?wallet=${wallet}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          setOwnedContracts(d.ownedContracts || [])
-          setPendingClaims(d.pendingClaims || [])
+    Promise.all([
+      fetch(`/api/owner-status?wallet=${wallet}`).then((r) => r.json()),
+      fetch(`/api/finder-status?finder=${wallet}`).then((r) => r.json()),
+    ])
+      .then(([ownerData, finderData]) => {
+        if (ownerData.success) {
+          setOwnedContracts(ownerData.ownedContracts || [])
+          setPendingClaims(ownerData.pendingClaims || [])
         }
+        if (finderData.success) setFinderFinds(finderData.items || [])
       })
       .catch(() => {})
       .finally(() => setLoaded(true))
@@ -58,8 +90,11 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
 
   // Nothing relevant — render nothing at all rather than an empty state.
   // "You have no pending actions" isn't an invitation; it's just noise for
-  // the majority of wallets that aren't an owner or victim of anything yet.
-  if (!loaded || (ownedContracts.length === 0 && pendingClaims.length === 0)) return null
+  // the majority of wallets that aren't an owner, victim, or finder of
+  // anything yet.
+  if (!loaded || (ownedContracts.length === 0 && pendingClaims.length === 0 && finderFinds.length === 0)) {
+    return null
+  }
 
   return (
     <div style={{
@@ -105,6 +140,30 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
       {pendingClaims.map((claim) => (
         <PendingClaimRow key={claim.claim_id} claim={claim} />
       ))}
+
+      {finderFinds.map((find) => {
+        const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
+        const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+        const txHash = find.settleTx || find.registerTx
+        return (
+          <div key={find.findKey} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+              {find.tokenSymbol || 'tokens'} find
+              {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
+              <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
+              {statusCopy.label}
+            </div>
+            {txHash && (
+              <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+                style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                View transaction ↗
+              </a>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

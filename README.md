@@ -61,13 +61,17 @@ If the wallet you connect matches the contract's on-chain `owner()`, an owner-on
 Anyone can discover a stranded balance before the affected team or victim does. Registering a find is **off-chain and gasless**: the finder signs a plain message (EIP-191, via `signMessage`) agreeing to the fee schedule, and it's recorded in Supabase under a deterministic `find_key` — first writer wins, enforced by a unique constraint (`409` for anyone who tries to register the same find afterward). No victim signature is required at this stage; it only locks in *priority* on the 7% finder fee.
 
 - **Abuse case:** a victim can't register as their own finder — rejected off-chain (the API checks `finder !== victim` before writing) and on-chain (`registerClaim()` reverts on `finder == victim`, [`SalvageRecoveryRouter.sol`](contracts-hardhat/contracts/SalvageRecoveryRouter.sol)). What this *doesn't* stop: someone using a second wallet they also control as "finder" — no signature scheme can prove two addresses belong to different people, so this is an accepted, bounded risk (worth at most the gap between the two fee schedules above), not a solved one.
+- **Stale registrations expire after 90 days** unless the claim has already settled — otherwise a single abandoned (or bot-squatted) registration would lock a find permanently, blocking any finder who could actually deliver the outreach. A settled find can never be reopened, checked directly against the claims registry.
 - **Victim contact today is manual** — the finder reaches out with the app's generated outreach message. Automated reverse-lookup (Basename/ENS, Farcaster) is on the roadmap, not built yet.
 
 ### 🕵️ Did I Lose Tokens?
 Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
 
 ### 📱 Base App Mini App
-Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it for recoverable tokens, no site navigation or copy-paste. Findings link straight back to the full recovery flow. Built with MiniKit / OnchainKit; registered on Base.dev. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
+Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it across **both Ethereum and Base in parallel**, findings labeled by chain. Recovery no longer means leaving the app either: signing the EIP-712 claim, registering it on-chain, and settling once funded all happen natively in the Mini App now — no redirect to the website to finish. Scope is deliberately narrower than the web app: the Contract Scanner and the owner-side recovery panel stay web-only. Built with MiniKit / OnchainKit and `@farcaster/miniapp-sdk`; registered on Base Dashboard. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
+
+### 👋 Proactive status on connect
+Connecting a wallet on the web app immediately (and only) surfaces what's actually relevant to it: contracts Salvage has already scanned where you're the on-chain `owner()`, plus any of your own claims that haven't settled yet — with a live "Settle" button once a claim is genuinely funded (checked on-chain, not trusted from a DB flag nothing keeps in sync). Pure lookups against data Salvage already has; never a live re-scan on every connect, since that would undo the point of rate limiting the scan endpoints. Shows nothing at all if there's nothing relevant — an empty "no pending actions" message would just be noise for the majority of wallets that aren't an owner or victim of anything yet.
 
 ### ⚖️ On-chain Recovery Settlement
 Recovery never depends on trusting anyone:
@@ -106,13 +110,15 @@ The router is designed so most attacks die by construction:
 
 Test suite: 10/10 passing (`npx hardhat test`) covering both fee paths, deterministic receiver prediction, residual settlement, forged/expired/duplicate signatures, fee-on-transfer math, and ownership.
 
+The application layer gets the same scrutiny as the contract: RLS on every Supabase table denies writes from the public anon key by default (verified directly, not assumed), trigger functions are pinned against the mutable-`search_path` privilege-escalation class, and the scan endpoints are rate-limited (Upstash-backed, shared across serverless instances rather than an in-memory counter that resets on every cold start) to stop a scripted hammering from running up RPC/explorer API costs.
+
 ## Stack
 
 - **Frontend:** Next.js 14 · TypeScript · wagmi v2 / viem
-- **Data:** Alchemy (RPC, Token API, Prices API) · Etherscan API V2 · Supabase (leaderboard, claims registry)
+- **Data:** Alchemy (RPC, Token API, Prices API) · Etherscan API V2 · Supabase (leaderboard, claims/finds registry) · Upstash Redis (rate limiting)
 - **Contracts:** Solidity 0.8.20 · Hardhat 3 · Ignition deploys · node:test + viem test suite
 - **Chains:** Ethereum + Base
-- **Base App:** MiniKit / OnchainKit Mini App · registered on Base.dev · wallet-address notification opt-in
+- **Base App:** MiniKit / OnchainKit Mini App · registered on Base Dashboard · wallet-address notification opt-in
 
 ## Repo layout
 
@@ -150,8 +156,8 @@ npx hardhat test
 - **✅ v1.1 — Owner-gated on-chain recovery:** shipped. A wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
 - **✅ v1.1 — Decoded rescue calldata:** shipped. When triage detects a rescue function, the owner panel reads its *real* ABI signature (not a guessed shape) and shows a decoded call preview with editable, best-effort-prefilled parameters (token/recipient/amount matched by name + type — left blank rather than guessed wherever the mapping isn't confident), plus a raw calldata copy button. Deliberately stops there: Salvage constructs the *preview*, never sends the transaction — the owner remains the one who submits it, since it's a call into a contract Salvage doesn't control or audit.
 - **Rescue edge cases:** multiple candidate rescue functions on one contract, custom/uncommon parameter shapes, and timelock/multisig-owned contracts aren't specially handled yet — the current version covers the common single-rescue-function case well and leaves the rest to the editable fields.
+- **✅ Recent Activity feed:** shipped — a chronological feed of finds registered, claims registered, and settlements. Deliberately not an aggregate "all-time recovered" counter: with real volume still low, a stats-style number reads as broken rather than new. A timeline shows the same one entry as proof the thing works instead.
 - **v1.2 — Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
-- **Claims pipeline dashboard:** registered → funded → settled tracking, with live "all-time recovered" stats.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
 - **Further out:** recovery APIs for wallets and explorers, protocol support portals, notifications for newly stranded assets.
 
