@@ -96,10 +96,10 @@ Recovery never depends on trusting anyone:
 
 | Contract | Ethereum | Base |
 |---|---|---|
-| **SalvageRecoveryRouter** | [`0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25`](https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code) | [`0x2240792d1A9D964d238bD693fCb09586B10faEdf`](https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code) |
-| **SalvageFeeContract** | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://etherscan.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://basescan.org/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) |
+| **SalvageRecoveryRouter** (active) | [`0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25`](https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code) | [`0x2240792d1A9D964d238bD693fCb09586B10faEdf`](https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code) |
+| **SalvageFeeContract** (legacy, unused) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://etherscan.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://basescan.org/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) |
 
-Both contracts verified on **Etherscan/Basescan, Blockscout, and Sourcify**.
+Both contracts verified on **Etherscan/Basescan, Blockscout, and Sourcify**. The Fee Contract was an earlier design (manual founder-confirmed recoveries, ETH-denominated fees) fully superseded by the Router's permissionless, signature-based settlement — the app no longer calls it, and it never held stranded ERC-20 tokens.
 
 ## Security model
 
