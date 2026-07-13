@@ -5,10 +5,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  webpack: (config) => {
-    config.externals = config.externals || []
-    return config
-  },
 }
 
 module.exports = nextConfig
