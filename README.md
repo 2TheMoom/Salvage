@@ -71,7 +71,12 @@ Paste your wallet address. Salvage scans your transfer history for the classic m
 Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it across **both Ethereum and Base in parallel**, findings labeled by chain. Recovery no longer means leaving the app either: signing the EIP-712 claim, registering it on-chain, and settling once funded all happen natively in the Mini App now — no redirect to the website to finish. Scope is deliberately narrower than the web app: the Contract Scanner and the owner-side recovery panel stay web-only. Built with MiniKit / OnchainKit and `@farcaster/miniapp-sdk`; registered on Base Dashboard. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
 
 ### 👋 Proactive status on connect
-Connecting a wallet on the web app immediately (and only) surfaces what's actually relevant to it: contracts Salvage has already scanned where you're the on-chain `owner()`, plus any of your own claims that haven't settled yet — with a live "Settle" button once a claim is genuinely funded (checked on-chain, not trusted from a DB flag nothing keeps in sync). Pure lookups against data Salvage already has; never a live re-scan on every connect, since that would undo the point of rate limiting the scan endpoints. Shows nothing at all if there's nothing relevant — an empty "no pending actions" message would just be noise for the majority of wallets that aren't an owner or victim of anything yet.
+Connecting a wallet on the web app immediately (and only) surfaces what's actually relevant to it, across all three roles it might play:
+- **Owner** — contracts Salvage has already scanned where you're the on-chain `owner()`
+- **Victim/beneficiary** — any of your own claims that haven't settled yet, with a live "Settle" button once a claim is genuinely funded (checked on-chain, not trusted from a DB flag nothing keeps in sync)
+- **Finder** — every find you've registered, cross-referenced against the claims registry for its real status: still just priority-locked, a claim registered crediting you, settled and paid out, or (an honest edge case) a claim that exists but doesn't credit you
+
+Pure lookups against data Salvage already has; never a live re-scan on every connect, since that would undo the point of rate limiting the scan endpoints. Shows nothing at all if there's nothing relevant across any of the three — an empty "no pending actions" message would just be noise for the majority of wallets that aren't an owner, victim, or finder of anything yet.
 
 ### ⚖️ On-chain Recovery Settlement
 Recovery never depends on trusting anyone:
