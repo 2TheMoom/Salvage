@@ -158,13 +158,23 @@ npx hardhat test
 
 ## Roadmap
 
-- **✅ v1.1 — Owner-gated on-chain recovery:** shipped. A wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
-- **✅ v1.1 — Decoded rescue calldata:** shipped. When triage detects a rescue function, the owner panel reads its *real* ABI signature (not a guessed shape) and shows a decoded call preview with editable, best-effort-prefilled parameters (token/recipient/amount matched by name + type — left blank rather than guessed wherever the mapping isn't confident), plus a raw calldata copy button. Deliberately stops there: Salvage constructs the *preview*, never sends the transaction — the owner remains the one who submits it, since it's a call into a contract Salvage doesn't control or audit.
-- **Rescue edge cases:** multiple candidate rescue functions on one contract, custom/uncommon parameter shapes, and timelock/multisig-owned contracts aren't specially handled yet — the current version covers the common single-rescue-function case well and leaves the rest to the editable fields.
-- **✅ Recent Activity feed:** shipped — a chronological feed of finds registered, claims registered, and settlements. Deliberately not an aggregate "all-time recovered" counter: with real volume still low, a stats-style number reads as broken rather than new. A timeline shows the same one entry as proof the thing works instead.
-- **v1.2 — Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
+### Shipped — v1.1
+
+- **✅ Owner-gated on-chain recovery:** a wallet matching a stranded contract's on-chain `owner()` can register a claim, get a deposit address, and settle — per token, crediting whichever finder registered first.
+- **✅ Decoded rescue calldata:** when triage detects a rescue function, the owner panel reads its *real* ABI signature (not a guessed shape) and shows a decoded call preview with editable, best-effort-prefilled parameters (token/recipient/amount matched by name + type — left blank rather than guessed wherever the mapping isn't confident), plus a raw calldata copy button. Deliberately stops there: Salvage constructs the *preview*, never sends the transaction — the owner remains the one who submits it, since it's a call into a contract Salvage doesn't control or audit.
+- **✅ Recent Activity feed:** a chronological feed of finds registered, claims registered, and settlements. Deliberately not an aggregate "all-time recovered" counter: with real volume still low, a stats-style number reads as broken rather than new. A timeline shows the same one entry as proof the thing works instead.
+
+**Known limitation:** multiple candidate rescue functions on one contract, custom/uncommon parameter shapes, and timelock/multisig-owned contracts aren't specially handled yet — the current version covers the common single-rescue-function case well and leaves the rest to the editable fields.
+
+### Up next
+
+- **Batch settlement for multi-token contracts:** a contract holding several stranded tokens today needs a separate register→settle cycle per token. Shipping a UI-orchestrated flow — select every stranded token once, walk through the same signatures in one guided sequence instead of re-navigating per token.
+- **Arc Network support:** Circle's Arc mainnet is expected this summer — Salvage will support it within days of launch. EVM-compatible, so the existing router deploys as-is; just a new chain config and verification pass.
+- **Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
-- **Further out:** recovery APIs for wallets and explorers, protocol support portals, notifications for newly stranded assets.
+- **Proactive re-scanning:** periodically re-check known contracts (not just on-demand) so an owner can be notified the moment something new gets stranded, not only when they happen to revisit.
+- **Public scan API:** let other wallets and explorers check an address for stranded tokens directly, instead of only through this site.
+- **Single-transaction batch settlement:** the guided multi-token flow above still needs one signature per token; collapsing that into one EIP-712 signature and one on-chain call is a real contract change (new typed-data schema, new function) that deserves its own review — tracked separately from the UI-only version above.
 
 ## Vision
 

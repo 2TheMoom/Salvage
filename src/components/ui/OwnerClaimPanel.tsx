@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
 import {
   useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain,
 } from 'wagmi'
@@ -49,6 +49,13 @@ function mapRescueArgs(
 
 const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
+type RowState = 'idle' | 'signing' | 'registering' | 'registered' | 'settling' | 'settled' | 'error'
+
+interface RowHandle {
+  register: () => Promise<void>
+  settle: () => Promise<void>
+}
+
 interface OwnerClaimPanelProps {
   contractAddress: string
   chain: Chain
@@ -85,9 +92,48 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
       .catch(() => {})
   }, [chain, contractAddress, ownerAddress, isOwner])
 
+  // Per-token live status, reported up by each row — drives the "Register
+  // All" / "Settle All" batch actions and which tokens they cover. A single
+  // stranded token never needs this (the per-row buttons already cover it),
+  // so the batch controls only appear once there's actually more than one
+  // token to walk through.
+  const [rowStatus, setRowStatus] = useState<Record<string, { state: RowState; funded: boolean }>>({})
+  const rowRefs = useRef<Map<string, RowHandle>>(new Map())
+  const [batchRunning, setBatchRunning]   = useState<'register' | 'settle' | null>(null)
+  const [batchProgress, setBatchProgress] = useState(0)
+
+  const handleStatusChange = (tokenAddress: string, state: RowState, funded: boolean) => {
+    setRowStatus((prev) => ({ ...prev, [tokenAddress]: { state, funded } }))
+  }
+
   if (!isOwner || tokens.length === 0) return null
 
   const hasFinder = !!registeredFinder
+
+  const pendingRegistration = tokens.filter((t) => {
+    const s = rowStatus[t.tokenAddress]?.state
+    return !s || s === 'idle' || s === 'error'
+  })
+  const readyToSettle = tokens.filter((t) => {
+    const s = rowStatus[t.tokenAddress]
+    return s?.state === 'registered' && s.funded
+  })
+
+  // Sequential, not parallel — each step needs its own wallet signature, and
+  // firing them all at once would just flood the wallet with simultaneous
+  // prompts. handleRegister/handleSettle already catch and display their own
+  // errors internally rather than throwing, so one rejected signature simply
+  // gets skipped over rather than aborting the rest of the batch.
+  const runBatch = async (kind: 'register' | 'settle', queue: StrandedToken[]) => {
+    setBatchRunning(kind)
+    setBatchProgress(0)
+    for (const token of queue) {
+      const handle = rowRefs.current.get(token.tokenAddress)
+      if (handle) await handle[kind]()
+      setBatchProgress((n) => n + 1)
+    }
+    setBatchRunning(null)
+  }
 
   return (
     <div style={{
@@ -110,15 +156,65 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
           ? 'A finder registered this contract first. Recovery routes 90% to you, 7% to them, 3% to the protocol.'
           : 'No finder has registered this contract. Recovery routes 95% to you, 5% to the protocol.'}
       </div>
+
+      {(pendingRegistration.length > 1 || readyToSettle.length > 1) && (
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {pendingRegistration.length > 1 && (
+              <button
+                onClick={() => runBatch('register', pendingRegistration)}
+                disabled={!!batchRunning}
+                style={{
+                  padding: '7px 12px', borderRadius: '6px', border: 'none',
+                  background: 'var(--eth)', color: '#fff', cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+                  opacity: batchRunning ? 0.6 : 1,
+                }}
+              >
+                {batchRunning === 'register'
+                  ? `Registering ${batchProgress}/${pendingRegistration.length}…`
+                  : `Register All (${pendingRegistration.length})`}
+              </button>
+            )}
+            {readyToSettle.length > 1 && (
+              <button
+                onClick={() => runBatch('settle', readyToSettle)}
+                disabled={!!batchRunning}
+                style={{
+                  padding: '7px 12px', borderRadius: '6px', border: 'none',
+                  background: 'var(--green)', color: '#fff', cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+                  opacity: batchRunning ? 0.6 : 1,
+                }}
+              >
+                {batchRunning === 'settle'
+                  ? `Settling ${batchProgress}/${readyToSettle.length}…`
+                  : `Settle All (${readyToSettle.length})`}
+              </button>
+            )}
+          </div>
+          {batchRunning && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '5px' }}>
+              You&apos;ll be prompted in your wallet once per token — please confirm each one as it comes up.
+            </div>
+          )}
+        </div>
+      )}
+
       {tokens.map((token) => (
         <OwnerClaimRow
           key={token.tokenAddress}
+          ref={(el) => {
+            if (el) rowRefs.current.set(token.tokenAddress, el)
+            else rowRefs.current.delete(token.tokenAddress)
+          }}
           contractAddress={contractAddress}
           chain={chain}
           ownerAddress={ownerAddress}
           finderAddress={registeredFinder}
           token={token}
           rescueAbiEntry={rescueAbiEntry}
+          onStatusChange={handleStatusChange}
         />
       ))}
     </div>
@@ -132,11 +228,13 @@ interface OwnerClaimRowProps {
   finderAddress: string | null
   token: StrandedToken
   rescueAbiEntry?: RescueAbiEntry
+  onStatusChange?: (tokenAddress: string, state: RowState, funded: boolean) => void
 }
 
-type RowState = 'idle' | 'signing' | 'registering' | 'registered' | 'settling' | 'settled' | 'error'
-
-function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, token, rescueAbiEntry }: OwnerClaimRowProps) {
+const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerClaimRow(
+  { contractAddress, chain, ownerAddress, finderAddress, token, rescueAbiEntry, onStatusChange },
+  ref
+) {
   const chainId = CHAIN_IDS[chain]
   const routerAddress = RECOVERY_ROUTER_ADDRESS[chainId]
 
@@ -199,6 +297,16 @@ function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, to
     query: { enabled: !!receiver && (!!alreadyRegistered || state === 'registered' || state === 'settled') },
   })
   const funded = (receiverBalance ?? 0n) > 0n
+
+  // Report the *derived* status up, not the raw local `state` — a token
+  // already registered/settled on a previous visit still starts this
+  // component at local state 'idle' until the on-chain reads above resolve,
+  // and the batch controls need the real picture, not the fresh-mount one.
+  const derivedState: RowState = isSettled ? 'settled' : isRegistered ? 'registered' : state
+  useEffect(() => {
+    onStatusChange?.(token.tokenAddress, derivedState, funded)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedState, funded])
 
   // Live balance of the stranded contract itself — this is the amount an
   // owner would actually rescue, distinct from `receiverBalance` above
@@ -353,6 +461,11 @@ function OwnerClaimRow({ contractAddress, chain, ownerAddress, finderAddress, to
     }
   }
 
+  useImperativeHandle(ref, () => ({
+    register: handleRegister,
+    settle: handleSettle,
+  }))
+
   const copyReceiverInstructions = async () => {
     if (!receiver) return
     const chainName = chain === 'eth' ? 'Ethereum' : 'Base'
@@ -503,4 +616,4 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
       )}
     </div>
   )
-}
+})
