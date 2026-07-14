@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { corsJson, corsPreflight } from '@/lib/cors'
 import { checkRateLimit } from '@/lib/ratelimit'
-import { readOnChainClaim } from '@/lib/contracts'
+import { readOnChainClaimWithRetry } from '@/lib/contracts'
 import { zeroAddress } from 'viem'
 
 export const dynamic = 'force-dynamic'
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return corsJson(req, { success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
-    const onChain = await readOnChainClaim(chain, claimId as `0x${string}`)
+    const onChain = await readOnChainClaimWithRetry(chain, claimId as `0x${string}`)
     if (!onChain) {
       return corsJson(req,
         { success: false, error: 'Claim not found on-chain yet. Wait for the registration transaction to confirm and try again.' },
@@ -120,7 +120,7 @@ export async function PATCH(req: NextRequest) {
       return corsJson(req, { success: false, error: 'Unknown claim' }, { status: 404 })
     }
 
-    const onChain = await readOnChainClaim(existing.chain, claimId as `0x${string}`)
+    const onChain = await readOnChainClaimWithRetry(existing.chain, claimId as `0x${string}`)
     if (!onChain || onChain.totalSettled <= 0n) {
       return corsJson(req, { success: false, error: 'Not settled on-chain yet.' }, { status: 400 })
     }

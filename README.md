@@ -166,9 +166,12 @@ npx hardhat test
 
 **Known limitation:** multiple candidate rescue functions on one contract, custom/uncommon parameter shapes, and timelock/multisig-owned contracts aren't specially handled yet — the current version covers the common single-rescue-function case well and leaves the rest to the editable fields.
 
+### Shipped — v1.2
+
+- **✅ Batch settlement for multi-token contracts:** a contract holding several stranded tokens no longer needs a separate register→settle cycle per token — "Register All" and "Settle All" walk through every stranded token in one guided sequence (still one wallet signature per token, just no re-navigating between them). Verified end-to-end against the real deployed Router with mock tokens before shipping.
+
 ### Up next
 
-- **Batch settlement for multi-token contracts:** a contract holding several stranded tokens today needs a separate register→settle cycle per token. Shipping a UI-orchestrated flow — select every stranded token once, walk through the same signatures in one guided sequence instead of re-navigating per token.
 - **Arc Network support:** Circle's Arc mainnet is expected this summer — Salvage will support it within days of launch. EVM-compatible, so the existing router deploys as-is; just a new chain config and verification pass.
 - **Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.

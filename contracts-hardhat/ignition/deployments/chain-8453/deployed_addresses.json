@@ -1,4 +1,7 @@
 {
   "SalvageFeeModule#SalvageFeeContract": "0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27",
-  "SalvageRecoveryRouter#SalvageRecoveryRouter": "0x2240792d1A9D964d238bD693fCb09586B10faEdf"
+  "SalvageRecoveryRouter#SalvageRecoveryRouter": "0x2240792d1A9D964d238bD693fCb09586B10faEdf",
+  "MockTestTokensModule#MockA": "0xAB639c16dC8F3034E27aBb32894B1b9204fa09f8",
+  "MockTestTokensModule#MockB": "0x7C16F2f7BA9D2B849df9Ca6A4dc9b9014d598347",
+  "MockTestTokensModule#MockC": "0x40E9CA5144090a09554F21AEffED8C5E5d083479"
 }

@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-1d42726a716f1d5ab7e016ce4ffa61e1ff724fe0",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.9.0"
+  },
+  "userSourceNameMap": {
+    "contracts/MockTokens.sol": "project/contracts/MockTokens.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/MockTokens.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ncontract MockERC20 {\r\n    string public name;\r\n    string public symbol;\r\n    uint8  public decimals = 18;\r\n    mapping(address => uint256) public balanceOf;\r\n\r\n    constructor(string memory _name, string memory _symbol) {\r\n        name = _name;\r\n        symbol = _symbol;\r\n    }\r\n\r\n    function mint(address to, uint256 amount) external {\r\n        balanceOf[to] += amount;\r\n    }\r\n\r\n    function transfer(address to, uint256 amount) external virtual returns (bool) {\r\n        require(balanceOf[msg.sender] >= amount, \"insufficient\");\r\n        balanceOf[msg.sender] -= amount;\r\n        balanceOf[to] += amount;\r\n        return true;\r\n    }\r\n}\r\n\r\n/// @notice Fee-on-transfer mock: skims 5% to a sink on every transfer,\r\n/// simulating tax tokens for balance-delta accounting tests.\r\ncontract MockTaxERC20 is MockERC20 {\r\n    address public immutable sink;\r\n\r\n    constructor(address _sink) MockERC20(\"Tax Token\", \"TAX\") {\r\n        sink = _sink;\r\n    }\r\n\r\n    function transfer(address to, uint256 amount) external override returns (bool) {\r\n        require(balanceOf[msg.sender] >= amount, \"insufficient\");\r\n        uint256 tax = (amount * 500) / 10_000;\r\n        balanceOf[msg.sender] -= amount;\r\n        balanceOf[sink] += tax;\r\n        balanceOf[to]   += amount - tax;\r\n        return true;\r\n    }\r\n}"
+      }
+    }
+  }
+}

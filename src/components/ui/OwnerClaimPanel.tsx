@@ -118,6 +118,8 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
     const s = rowStatus[t.tokenAddress]
     return s?.state === 'registered' && s.funded
   })
+  const allSettled = tokens.length > 1
+    && tokens.every((t) => rowStatus[t.tokenAddress]?.state === 'settled')
 
   // Sequential, not parallel — each step needs its own wallet signature, and
   // firing them all at once would just flood the wallet with simultaneous
@@ -156,6 +158,16 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
           ? 'A finder registered this contract first. Recovery routes 90% to you, 7% to them, 3% to the protocol.'
           : 'No finder has registered this contract. Recovery routes 95% to you, 5% to the protocol.'}
       </div>
+
+      {allSettled && (
+        <div style={{
+          marginBottom: '8px', padding: '8px 10px', borderRadius: '6px',
+          background: 'var(--green-soft)', border: '1px solid var(--green)',
+          color: 'var(--green)', fontFamily: 'var(--font-mono)', fontSize: '0.66rem', fontWeight: 600,
+        }}>
+          ✓ All {tokens.length} tokens recovered — nothing left to settle here.
+        </div>
+      )}
 
       {(pendingRegistration.length > 1 || readyToSettle.length > 1) && (
         <div style={{ marginBottom: '8px' }}>

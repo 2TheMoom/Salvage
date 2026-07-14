@@ -301,3 +301,23 @@ export async function readOnChainClaim(
 
   return { token, victim, finder, lossTxHash, totalSettled, receiver }
 }
+
+// The client already waits for the transaction receipt before calling
+// /api/claims, but that confirmation and this server's own RPC endpoint can
+// briefly disagree — different providers/nodes don't always converge on the
+// same head at the same instant. A couple of short retries absorbs that
+// propagation lag instead of surfacing a false "not found" for a claim that
+// genuinely just confirmed.
+export async function readOnChainClaimWithRetry(
+  chain: Chain,
+  claimId: `0x${string}`,
+  attempts = 3,
+  delayMs = 1500
+): Promise<OnChainClaim | null> {
+  for (let i = 0; i < attempts; i++) {
+    const result = await readOnChainClaim(chain, claimId)
+    if (result) return result
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs))
+  }
+  return null
+}
