@@ -148,21 +148,36 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
         const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
         const txHash = find.settleTx || find.registerTx
         return (
-          <div key={find.findKey} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
-              {find.tokenSymbol || 'tokens'} find
-              {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
-              <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
+          <div key={find.findKey} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '9px 0', borderBottom: '1px solid var(--border)', gap: '10px',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+                {find.tokenSymbol || 'tokens'} find
+                {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
+                <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
+                {statusCopy.label}
+              </div>
+              {txHash && (
+                <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                  View transaction ↗
+                </a>
+              )}
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
-              {statusCopy.label}
-            </div>
-            {txHash && (
-              <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-                style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
-                View transaction ↗
-              </a>
-            )}
+            <button
+              onClick={() => onViewContract(find.recipientContract, find.chain as Chain)}
+              style={{
+                padding: '7px 12px', borderRadius: '6px', border: 'none', whiteSpace: 'nowrap',
+                background: 'var(--eth)', color: '#fff', cursor: 'pointer',
+                fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+              }}
+            >
+              View Contract
+            </button>
           </div>
         )
       })}
