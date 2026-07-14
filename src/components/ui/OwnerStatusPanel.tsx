@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useReadContract, useWriteContract, useSwitchChain } from 'wagmi'
 import { waitForTransactionReceipt } from 'wagmi/actions'
 import { config } from '@/lib/wagmi'
@@ -168,16 +169,16 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
                 </a>
               )}
             </div>
-            <button
-              onClick={() => onViewContract(find.recipientContract, find.chain as Chain)}
+            <Link
+              href={`/find/${encodeURIComponent(find.findKey)}`}
               style={{
-                padding: '7px 12px', borderRadius: '6px', border: 'none', whiteSpace: 'nowrap',
-                background: 'var(--eth)', color: '#fff', cursor: 'pointer',
+                padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
+                background: 'var(--eth)', color: '#fff', textDecoration: 'none',
                 fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
               }}
             >
-              View Contract
-            </button>
+              View Find
+            </Link>
           </div>
         )
       })}
