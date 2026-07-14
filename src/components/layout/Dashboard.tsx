@@ -79,10 +79,11 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
   const [result, setResult]           = useState<ScanResult | null>(null)
   const [victimResult, setVictimResult] = useState<VictimScanResult | null>(null)
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [lbChain, setLbChain]         = useState<'eth' | 'base'>('eth')
-  const [lbLoading, setLbLoading]     = useState(false)
-  const [lbExpanded, setLbExpanded]   = useState(false)
+  const [leaderboard, setLeaderboard]     = useState<LeaderboardEntry[]>([])
+  const [lbChain, setLbChain]             = useState<'eth' | 'base'>('eth')
+  const [lbLoading, setLbLoading]         = useState(false)
+  const [lbLoadingMore, setLbLoadingMore] = useState(false)
+  const [lbHasMore, setLbHasMore]         = useState(false)
   // Leaderboard and Activity share the exact same row layout and both browse
   // the protocol's public state (ranked vs. chronological) — one tabbed card
   // instead of two stacked panels with duplicate chrome.
@@ -130,22 +131,44 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
       .catch(() => {})
   }, [connectedWallet])
 
-  // Fetch leaderboard on mount and chain change
+  // Fetch leaderboard on mount and chain change — first page only; a growing
+  // leaderboard should page in 15 at a time rather than dumping everything
+  // fetched (up to a hardcoded cap) into the DOM at once.
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLbLoading(true)
       try {
         const res  = await fetch(`/api/leaderboard?chain=${lbChain}`)
         const data = await res.json()
-        if (data.success) setLeaderboard(data.data || [])
+        if (data.success) {
+          setLeaderboard(data.data || [])
+          setLbHasMore(!!data.hasMore)
+        }
       } catch {
         setLeaderboard([])
+        setLbHasMore(false)
       } finally {
         setLbLoading(false)
       }
     }
     fetchLeaderboard()
   }, [lbChain])
+
+  const loadMoreLeaderboard = useCallback(async () => {
+    setLbLoadingMore(true)
+    try {
+      const res  = await fetch(`/api/leaderboard?chain=${lbChain}&offset=${leaderboard.length}`)
+      const data = await res.json()
+      if (data.success) {
+        setLeaderboard((prev) => [...prev, ...(data.data || [])])
+        setLbHasMore(!!data.hasMore)
+      }
+    } catch {
+      // leave the list as-is; the Load More button just stays put to retry
+    } finally {
+      setLbLoadingMore(false)
+    }
+  }, [lbChain, leaderboard.length])
 
   // Recent activity — a chronological feed rather than a ranked leaderboard,
   // since real volume (finds/claims) is still low enough that a ranking
@@ -509,7 +532,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
               </div>
             ) : (
               <>
-                {(lbExpanded ? leaderboard : leaderboard.slice(0, 5)).map((row, i) => (
+                {leaderboard.map((row, i) => (
                 <div
                   key={row.id}
                   className="lb-row"
@@ -537,20 +560,20 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   </div>
                 </div>
               ))}
-                {leaderboard.length > 5 && (
+                {lbHasMore && (
                   <button
-                    onClick={() => setLbExpanded(v => !v)}
+                    onClick={loadMoreLeaderboard}
+                    disabled={lbLoadingMore}
                     style={{
                       width: '100%', padding: '9px 14px', marginTop: '4px',
                       borderRadius: '7px', border: '1px dashed var(--border)',
                       background: 'transparent', cursor: 'pointer',
                       fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
                       fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-2)',
+                      opacity: lbLoadingMore ? 0.6 : 1,
                     }}
                   >
-                    {lbExpanded
-                      ? '▴ Show top 5 only'
-                      : `▾ Show all ${leaderboard.length} contracts (+${leaderboard.length - 5} more)`}
+                    {lbLoadingMore ? 'Loading…' : '▾ Load 15 More'}
                   </button>
                 )}
               </>
