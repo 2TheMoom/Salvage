@@ -37,16 +37,25 @@ type FinderClaimStatus =
   | 'claimed_without_you'
   | 'settled_without_you'
 
+interface FinderFindToken {
+  tokenAddress: string
+  tokenSymbol: string | null
+  valueUsd: number | null
+  claimStatus: FinderClaimStatus
+  registerTx: string | null
+  settleTx: string | null
+}
+
 interface FinderFind {
   findKey: string
   chain: string
-  tokenSymbol: string | null
   valueUsd: number | null
   recipientContract: string
   createdAt: string
   claimStatus: FinderClaimStatus
   registerTx: string | null
   settleTx: string | null
+  tokens: FinderFindToken[]
 }
 
 const FINDER_STATUS_COPY: Record<FinderClaimStatus, { label: string; color: string }> = {
@@ -144,44 +153,9 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
         <PendingClaimRow key={claim.claim_id} claim={claim} />
       ))}
 
-      {finderFinds.map((find) => {
-        const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
-        const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
-        const txHash = find.settleTx || find.registerTx
-        return (
-          <div key={find.findKey} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '9px 0', borderBottom: '1px solid var(--border)', gap: '10px',
-          }}>
-            <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
-                {find.tokenSymbol || 'tokens'} find
-                {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
-                <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
-                {statusCopy.label}
-              </div>
-              {txHash && (
-                <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
-                  View transaction ↗
-                </a>
-              )}
-            </div>
-            <Link
-              href={`/find/${encodeURIComponent(find.findKey)}`}
-              style={{
-                padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
-                background: 'var(--eth)', color: '#fff', textDecoration: 'none',
-                fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
-              }}
-            >
-              View Find
-            </Link>
-          </div>
-        )
-      })}
+      {finderFinds.map((find) => (
+        <FinderFindRow key={find.findKey} find={find} />
+      ))}
     </div>
   )
 }
@@ -290,6 +264,70 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
       {error && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--crimson)', marginTop: '4px' }}>
           {error}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FinderFindRow({ find }: { find: FinderFind }) {
+  const [expanded, setExpanded] = useState(false)
+  const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
+  const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+  const txHash = find.settleTx || find.registerTx
+  const symbolList = find.tokens.map((t) => t.tokenSymbol || 'token').join(', ') || 'tokens'
+  const multiple = find.tokens.length > 1
+
+  return (
+    <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+        <div>
+          <div
+            style={{
+              fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)',
+              cursor: multiple ? 'pointer' : 'default',
+            }}
+            onClick={() => multiple && setExpanded((e) => !e)}
+          >
+            {multiple && <span style={{ color: 'var(--text-3)', marginRight: '4px' }}>{expanded ? '▾' : '▸'}</span>}
+            {symbolList} find
+            {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
+            <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
+            {statusCopy.label}
+          </div>
+          {txHash && (
+            <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+              View transaction ↗
+            </a>
+          )}
+        </div>
+        <Link
+          href={`/find/${encodeURIComponent(find.findKey)}`}
+          style={{
+            padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
+            background: 'var(--eth)', color: '#fff', textDecoration: 'none',
+            fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+          }}
+        >
+          View Find
+        </Link>
+      </div>
+
+      {multiple && expanded && (
+        <div style={{ marginTop: '6px', paddingLeft: '14px', borderLeft: '2px solid var(--border)' }}>
+          {find.tokens.map((t) => {
+            const tCopy = FINDER_STATUS_COPY[t.claimStatus]
+            return (
+              <div key={t.tokenAddress} style={{ padding: '5px 0', fontFamily: 'var(--font-mono)', fontSize: '0.66rem' }}>
+                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{t.tokenSymbol || 'token'}</span>
+                {t.valueUsd != null && <span style={{ color: 'var(--text-2)' }}> · ${t.valueUsd.toFixed(2)}</span>}
+                <span style={{ color: tCopy.color }}> · {tCopy.label}</span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

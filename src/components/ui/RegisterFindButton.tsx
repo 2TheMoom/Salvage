@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useAccount, useSignMessage, useConnect } from 'wagmi'
 import { injected } from '@wagmi/connectors'
 import { contractScanLossTxHash } from '@/lib/contracts'
-import { Chain } from '@/types'
+import { Chain, StrandedToken } from '@/types'
 
 interface RegisterFindButtonProps {
   contractAddress: string
-  tokenAddress:    string
+  tokens:          StrandedToken[]
   chain:           Chain
   triageStatus:    string
 }
@@ -17,7 +17,7 @@ type FindState = 'idle' | 'signing' | 'registered' | 'taken' | 'error'
 
 export default function RegisterFindButton({
   contractAddress,
-  tokenAddress,
+  tokens,
   chain,
   triageStatus,
 }: RegisterFindButtonProps) {
@@ -95,13 +95,14 @@ export default function RegisterFindButton({
     setMsg(null)
     try {
       setState('signing')
-      const token = tokenAddress || '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      const primary = tokens[0]
+      const symbolList = tokens.map((t) => t.tokenSymbol).filter(Boolean).join(', ') || 'stranded tokens'
       const message =
         `Salvage finder registration\n\n` +
         `I am registering a discovered stranded contract and agree to the finder fee schedule ` +
         `(7% finder, 3% protocol) on successful recovery.\n\n` +
         `Contract: ${contractAddress}\n` +
-        `Token: ${token}\n` +
+        `Tokens found: ${symbolList}\n` +
         `Chain: ${chain}\n` +
         `Finder: ${address}`
 
@@ -113,15 +114,20 @@ export default function RegisterFindButton({
         body: JSON.stringify({
           chain,
           victimWallet:      contractAddress,   // contract is the locus; no single victim
-          tokenAddress:      token,
-          tokenSymbol:       null,
+          tokenAddress:      primary.tokenAddress,
+          tokenSymbol:       primary.tokenSymbol,
+          strandedTokens:    tokens.map((t) => ({
+            tokenAddress: t.tokenAddress,
+            tokenSymbol:  t.tokenSymbol,
+            valueUsd:     t.valueUsd,
+          })),
           // Must match the same derived hash OwnerClaimPanel uses on-chain
           // for this contract — otherwise the off-chain find and the
           // eventual on-chain claim can never be cross-referenced to tell
           // a finder whether their registration actually got credited.
           lossTxHash:        contractScanLossTxHash(contractAddress),
           recipientContract: contractAddress,
-          valueUsd:          null,
+          valueUsd:          tokens.reduce((s, t) => s + (t.valueUsd || 0), 0),
           finderAddress:     address,
           signature,
           message,

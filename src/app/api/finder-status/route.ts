@@ -6,11 +6,56 @@ export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
 
 type ClaimStatus =
-  | 'pending'              // no claim registered against this find yet
+  | 'pending'              // no claim registered against this token yet
   | 'registered_for_you'   // claim registered, crediting this finder
   | 'settled_for_you'      // settled, this finder's 7% should have paid out
   | 'claimed_without_you'  // a claim exists but doesn't credit this finder
   | 'settled_without_you'  // settled without crediting this finder
+
+interface StrandedTokenEntry {
+  tokenAddress: string
+  tokenSymbol: string | null
+  valueUsd: number | null
+}
+
+interface TokenStatus extends StrandedTokenEntry {
+  claimStatus: ClaimStatus
+  registerTx: string | null
+  settleTx: string | null
+}
+
+// Priority order for picking one "overall" status to show on the compact
+// card — problems (a claim that skipped this finder) surface first, then
+// progress, so nothing concerning gets silently averaged away by tokens
+// still pending.
+const STATUS_PRIORITY: ClaimStatus[] = [
+  'claimed_without_you', 'settled_without_you', 'registered_for_you', 'settled_for_you', 'pending',
+]
+
+async function tokenClaimStatus(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  chain: string, lossTxHash: string, entry: StrandedTokenEntry, finderLower: string
+): Promise<TokenStatus> {
+  const { data: claim } = await supabase
+    .from('salvage_claims')
+    .select('finder_address, status, register_tx, settle_tx')
+    .eq('chain', chain)
+    .eq('token_address', entry.tokenAddress.toLowerCase())
+    .eq('loss_tx_hash', lossTxHash)
+    .maybeSingle()
+
+  let claimStatus: ClaimStatus
+  if (!claim) {
+    claimStatus = 'pending'
+  } else if (claim.finder_address?.toLowerCase() !== finderLower) {
+    claimStatus = claim.status === 'settled' ? 'settled_without_you' : 'claimed_without_you'
+  } else {
+    claimStatus = claim.status === 'settled' ? 'settled_for_you' : 'registered_for_you'
+  }
+
+  return { ...entry, claimStatus, registerTx: claim?.register_tx ?? null, settleTx: claim?.settle_tx ?? null }
+}
 
 async function withClaimStatus(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,44 +64,46 @@ async function withClaimStatus(
     find_key: string; chain: string; token_address: string; token_symbol: string | null
     loss_tx_hash: string; recipient_contract: string; value_usd: number | null
     created_at: string; finder_address: string; victim_wallet: string
+    stranded_tokens: StrandedTokenEntry[] | null
   }
 ) {
   const lower = find.finder_address.toLowerCase()
-  const { data: claim } = await supabase
-    .from('salvage_claims')
-    .select('finder_address, status, register_tx, settle_tx')
-    .eq('chain', find.chain)
-    .eq('token_address', find.token_address)
-    .eq('loss_tx_hash', find.loss_tx_hash)
-    .maybeSingle()
 
-  let claimStatus: ClaimStatus
-  if (!claim) {
-    claimStatus = 'pending'
-  } else if (claim.finder_address?.toLowerCase() !== lower) {
-    claimStatus = claim.status === 'settled' ? 'settled_without_you' : 'claimed_without_you'
-  } else {
-    claimStatus = claim.status === 'settled' ? 'settled_for_you' : 'registered_for_you'
-  }
+  // Older finds (registered before stranded_tokens existed) only ever
+  // captured a single token — fall back to that as a one-element list.
+  const entries: StrandedTokenEntry[] = find.stranded_tokens?.length
+    ? find.stranded_tokens
+    : [{ tokenAddress: find.token_address, tokenSymbol: find.token_symbol, valueUsd: find.value_usd }]
+
+  const tokens = await Promise.all(
+    entries.map((entry) => tokenClaimStatus(supabase, find.chain, find.loss_tx_hash, entry, lower))
+  )
+
+  const overall = tokens.reduce((worst, t) => (
+    STATUS_PRIORITY.indexOf(t.claimStatus) < STATUS_PRIORITY.indexOf(worst) ? t.claimStatus : worst
+  ), 'pending' as ClaimStatus)
+
+  const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsd || 0), 0)
 
   return {
     findKey: find.find_key,
     chain: find.chain,
-    tokenAddress: find.token_address,
-    tokenSymbol: find.token_symbol,
-    valueUsd: find.value_usd,
     recipientContract: find.recipient_contract,
     victimWallet: find.victim_wallet,
     lossTxHash: find.loss_tx_hash,
     finderAddress: find.finder_address,
     createdAt: find.created_at,
-    claimStatus,
-    registerTx: claim?.register_tx ?? null,
-    settleTx: claim?.settle_tx ?? null,
+    tokens,
+    claimStatus: overall,
+    valueUsd: totalValueUsd || null,
+    // Kept for older callers expecting a single tx — points at the first
+    // token that actually has one.
+    registerTx: tokens.find((t) => t.registerTx)?.registerTx ?? null,
+    settleTx: tokens.find((t) => t.settleTx)?.settleTx ?? null,
   }
 }
 
-const FIND_COLUMNS = 'find_key, chain, token_address, token_symbol, loss_tx_hash, recipient_contract, value_usd, created_at, finder_address, victim_wallet'
+const FIND_COLUMNS = 'find_key, chain, token_address, token_symbol, loss_tx_hash, recipient_contract, value_usd, created_at, finder_address, victim_wallet, stranded_tokens'
 
 // Pure DB lookups — no live re-scan. A finder's own registration off-chain
 // (salvage_finds) says nothing on its own about whether it ever actually

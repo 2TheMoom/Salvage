@@ -104,9 +104,15 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
   const totalUsd     = result.totalStrandedUsd ?? 0
   const feeUsd       = result.finderFeeUsd     ?? 0
 
-  // Get primary stranded token address for registration
-  const primaryTokenAddress = result.strandedTokens?.[0]?.tokenAddress
-    || '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+  // Registering a find is contract-level, not tied to one token — the full
+  // list of stranded tokens found is what actually gets recorded.
+  const strandedTokensForFind: StrandedToken[] = result.strandedTokens?.length
+    ? result.strandedTokens
+    : [{
+        tokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        tokenName: 'USDC', tokenSymbol: 'USDC',
+        balance: '0', balanceFormatted: '0', priceUsd: 1, valueUsd: 0,
+      }]
 
   const handleCopyOutreach = () => {
     const template = generateOutreachTemplate(result)
@@ -238,7 +244,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
           <>
             <RegisterFindButton
               contractAddress={result.contractAddress}
-              tokenAddress={primaryTokenAddress}
+              tokens={strandedTokensForFind}
               chain={result.chain}
               triageStatus={result.triageStatus}
             />

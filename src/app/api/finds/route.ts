@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const {
       chain, victimWallet, tokenAddress, tokenSymbol, lossTxHash,
       recipientContract, valueUsd, finderAddress, signature, message,
-      findKeyOverride,
+      findKeyOverride, strandedTokens,
     } = await req.json()
 
     if (!chain || !victimWallet || !tokenAddress || !lossTxHash ||
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       value_usd:          valueUsd ?? null,
       finder_address:     finderAddress.toLowerCase(),
       finder_signature:   signature,
+      stranded_tokens:    Array.isArray(strandedTokens) && strandedTokens.length ? strandedTokens : null,
     }
 
     const { data: existing } = await admin
