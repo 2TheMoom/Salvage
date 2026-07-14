@@ -6,6 +6,7 @@ import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
 import VictimResultCard from '@/components/ui/VictimResultCard'
 import ConnectButton from '@/components/ui/ConnectButton'
+import ChainSwitcher from '@/components/ui/ChainSwitcher'
 import OwnerStatusPanel from '@/components/ui/OwnerStatusPanel'
 import { ScanResult, Chain, ScanApiResponse, VictimScanResult, VictimScanApiResponse } from '@/types'
 import { isValidAddress, truncateAddress } from '@/lib/utils'
@@ -257,7 +258,8 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
           <li><a href="#leaderboard" onClick={(e) => { e.preventDefault(); setSidebarTab('leaderboard'); document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' }) }}>Leaderboard</a></li>
           <li><a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a></li>
         </ul>
-        <div className="d-nav-right">
+        <div className="d-nav-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <ChainSwitcher />
           <ConnectButton variant="dashboard" />
         </div>
       </nav>
