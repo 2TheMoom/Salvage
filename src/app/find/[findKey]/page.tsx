@@ -190,6 +190,17 @@ export default function FindDetailPage() {
                   ({find.tokens.length - visibleCount} remaining)
                 </div>
               )}
+              {visibleCount > TOKEN_REVEAL_CHUNK && (
+                <div
+                  onClick={() => setVisibleCount(TOKEN_REVEAL_CHUNK)}
+                  style={{
+                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
+                    color: 'var(--text-3)', fontWeight: 600, padding: '6px 2px',
+                  }}
+                >
+                  ▴ Show less
+                </div>
+              )}
             </div>
 
             <div style={{

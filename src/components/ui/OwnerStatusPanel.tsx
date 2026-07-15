@@ -353,6 +353,17 @@ function FinderFindRow({ find }: { find: FinderFind }) {
               ({find.tokens.length - visibleCount} remaining)
             </div>
           )}
+          {visibleCount > TOKEN_REVEAL_CHUNK && (
+            <div
+              onClick={() => setVisibleCount(TOKEN_REVEAL_CHUNK)}
+              style={{
+                marginTop: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                fontSize: '0.64rem', color: 'var(--text-3)', fontWeight: 600,
+              }}
+            >
+              ▴ Show less
+            </div>
+          )}
         </div>
       )}
     </div>
