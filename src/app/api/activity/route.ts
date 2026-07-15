@@ -23,17 +23,28 @@ const PAGE_SIZE = 10
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0)
+    const page   = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+    const offset = (page - 1) * PAGE_SIZE
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Two tables get merged and re-sorted chronologically, and a settled
-    // claim produces two items (registered + settled) — over-fetch raw rows
-    // from each table so this page comes out correctly ordered once merged,
-    // capped so a large offset can't trigger an unbounded query.
+    // A settled claim produces two items (registered + settled) — the exact
+    // total needs all three counts, not just the raw table row counts, so
+    // "Page X of Y" reflects the real merged item count.
+    const [findsCountRes, claimsCountRes, settledCountRes] = await Promise.all([
+      supabase.from('salvage_finds').select('*', { count: 'exact', head: true }),
+      supabase.from('salvage_claims').select('*', { count: 'exact', head: true }),
+      supabase.from('salvage_claims').select('*', { count: 'exact', head: true }).eq('status', 'settled'),
+    ])
+    const totalCount = (findsCountRes.count ?? 0) + (claimsCountRes.count ?? 0) + (settledCountRes.count ?? 0)
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+    // Two tables get merged and re-sorted chronologically — over-fetch raw
+    // rows from each so this page comes out correctly ordered once merged,
+    // capped so a large page number can't trigger an unbounded query.
     const fetchLimit = Math.min(offset + PAGE_SIZE + 1, 250) * 2
     const [findsRes, claimsRes] = await Promise.all([
       supabase.from('salvage_finds').select('*').order('created_at', { ascending: false }).limit(fetchLimit),
@@ -100,14 +111,16 @@ export async function GET(req: NextRequest) {
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    const hasMore = items.length > offset + PAGE_SIZE
     return NextResponse.json({
       success: true,
       items: items.slice(offset, offset + PAGE_SIZE),
-      hasMore,
+      page, totalPages, totalCount,
     })
   } catch (err) {
     console.error('[/api/activity] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to fetch activity', items: [], hasMore: false }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch activity', items: [], page: 1, totalPages: 1, totalCount: 0 },
+      { status: 500 }
+    )
   }
 }

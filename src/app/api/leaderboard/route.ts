@@ -11,29 +11,33 @@ const PAGE_SIZE = 10
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const chain  = searchParams.get('chain') || 'eth'
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0)
+    const chain = searchParams.get('chain') || 'eth'
+    const page  = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+    const from  = (page - 1) * PAGE_SIZE
+    const to    = from + PAGE_SIZE - 1
 
-    // Fetch one extra row to know whether another page exists, without a
-    // separate count() query.
-    const { data, error } = await supabase
+    // True paged navigation, not an ever-growing "load more" list — the
+    // sidebar's height needs a fixed ceiling regardless of how much real
+    // data accumulates, so an exact count drives "Page X of Y" rather than
+    // just a hasMore flag.
+    const { data, error, count } = await supabase
       .from('salvage_leaderboard')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('chain', chain)
       .gt('stranded_value_usd', 0)
       .order('stranded_value_usd', { ascending: false })
-      .range(offset, offset + PAGE_SIZE)
+      .range(from, to)
 
     if (error) throw error
 
-    const rows = data || []
-    const hasMore = rows.length > PAGE_SIZE
+    const totalCount = count ?? 0
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-    return NextResponse.json({ success: true, data: rows.slice(0, PAGE_SIZE), hasMore })
+    return NextResponse.json({ success: true, data: data || [], page, totalPages, totalCount })
   } catch (error) {
     console.error('[/api/leaderboard] Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch leaderboard', data: [], hasMore: false },
+      { success: false, error: 'Failed to fetch leaderboard', data: [], page: 1, totalPages: 1, totalCount: 0 },
       { status: 500 }
     )
   }

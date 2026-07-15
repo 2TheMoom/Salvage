@@ -8,6 +8,7 @@ import VictimResultCard from '@/components/ui/VictimResultCard'
 import ConnectButton from '@/components/ui/ConnectButton'
 import ChainSwitcher from '@/components/ui/ChainSwitcher'
 import OwnerStatusPanel from '@/components/ui/OwnerStatusPanel'
+import PageNav from '@/components/ui/PageNav'
 import { ScanResult, Chain, ScanApiResponse, VictimScanResult, VictimScanApiResponse } from '@/types'
 import { isValidAddress, truncateAddress } from '@/lib/utils'
 
@@ -82,8 +83,8 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
   const [leaderboard, setLeaderboard]     = useState<LeaderboardEntry[]>([])
   const [lbChain, setLbChain]             = useState<'eth' | 'base'>('eth')
   const [lbLoading, setLbLoading]         = useState(false)
-  const [lbLoadingMore, setLbLoadingMore] = useState(false)
-  const [lbHasMore, setLbHasMore]         = useState(false)
+  const [lbPage, setLbPage]               = useState(1)
+  const [lbTotalPages, setLbTotalPages]   = useState(1)
   // Leaderboard and Activity share the exact same row layout and both browse
   // the protocol's public state (ranked vs. chronological) — one tabbed card
   // instead of two stacked panels with duplicate chrome.
@@ -131,82 +132,53 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
       .catch(() => {})
   }, [connectedWallet])
 
-  // Fetch leaderboard on mount and chain change — first page only; a growing
-  // leaderboard should page in 15 at a time rather than dumping everything
-  // fetched (up to a hardcoded cap) into the DOM at once.
+  // True paged navigation, not an ever-growing "load more" list — a
+  // cumulative list still eventually makes the sidebar arbitrarily tall as
+  // real data piles up; a fixed page size keeps its height capped no matter
+  // how much the leaderboard or activity feed grows.
+  useEffect(() => {
+    setLbPage(1)
+  }, [lbChain])
+
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLbLoading(true)
       try {
-        const res  = await fetch(`/api/leaderboard?chain=${lbChain}`)
+        const res  = await fetch(`/api/leaderboard?chain=${lbChain}&page=${lbPage}`)
         const data = await res.json()
         if (data.success) {
           setLeaderboard(data.data || [])
-          setLbHasMore(!!data.hasMore)
+          setLbTotalPages(data.totalPages || 1)
         }
       } catch {
         setLeaderboard([])
-        setLbHasMore(false)
       } finally {
         setLbLoading(false)
       }
     }
     fetchLeaderboard()
-  }, [lbChain])
-
-  const loadMoreLeaderboard = useCallback(async () => {
-    setLbLoadingMore(true)
-    try {
-      const res  = await fetch(`/api/leaderboard?chain=${lbChain}&offset=${leaderboard.length}`)
-      const data = await res.json()
-      if (data.success) {
-        setLeaderboard((prev) => [...prev, ...(data.data || [])])
-        setLbHasMore(!!data.hasMore)
-      }
-    } catch {
-      // leave the list as-is; the Load More button just stays put to retry
-    } finally {
-      setLbLoadingMore(false)
-    }
-  }, [lbChain, leaderboard.length])
+  }, [lbChain, lbPage])
 
   // Recent activity — a chronological feed rather than a ranked leaderboard,
   // since real volume (finds/claims) is still low enough that a ranking
-  // would show one entry and read as dead rather than new. Paged 10 at a
-  // time, same reasoning as the leaderboard — don't dump everything fetched
-  // into the DOM at once as real volume grows.
+  // would show one entry and read as dead rather than new.
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [activityLoading, setActivityLoading] = useState(true)
-  const [activityLoadingMore, setActivityLoadingMore] = useState(false)
-  const [activityHasMore, setActivityHasMore] = useState(false)
+  const [activityPage, setActivityPage] = useState(1)
+  const [activityTotalPages, setActivityTotalPages] = useState(1)
   useEffect(() => {
-    fetch('/api/activity')
+    setActivityLoading(true)
+    fetch(`/api/activity?page=${activityPage}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
           setActivity(d.items || [])
-          setActivityHasMore(!!d.hasMore)
+          setActivityTotalPages(d.totalPages || 1)
         }
       })
       .catch(() => {})
       .finally(() => setActivityLoading(false))
-  }, [])
-
-  const loadMoreActivity = useCallback(async () => {
-    setActivityLoadingMore(true)
-    try {
-      const res  = await fetch(`/api/activity?offset=${activity.length}`)
-      const data = await res.json()
-      if (data.success) {
-        setActivity((prev) => [...prev, ...(data.items || [])])
-        setActivityHasMore(!!data.hasMore)
-      }
-    } catch {
-      // leave the list as-is; the Load More button just stays put to retry
-    } finally {
-      setActivityLoadingMore(false)
-    }
-  }, [activity.length])
+  }, [activityPage])
 
   const runScan = useCallback(async (addr: string, scanChain: Chain, scanMode: 'contract' | 'victim') => {
     if (!isValidAddress(addr)) {
@@ -455,6 +427,32 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
             </div>
           )}
 
+          {scanState === 'idle' && (
+            <div className="how-grid" style={{ marginTop: '20px' }}>
+              <div className="how-card">
+                <div className="how-step">Step 01 · Scan</div>
+                <div className="how-title">Paste an address</div>
+                <div className="how-body">
+                  A contract or a wallet — Salvage checks for stranded tokens, rescue functions, and a real recovery path, on Ethereum or Base.
+                </div>
+              </div>
+              <div className="how-card">
+                <div className="how-step">Step 02 · Register</div>
+                <div className="how-title">Lock in your claim</div>
+                <div className="how-body">
+                  Sign an EIP-712 claim (owner/victim) or a message (finder) — free, no gas, and Salvage never takes custody of anything.
+                </div>
+              </div>
+              <div className="how-card">
+                <div className="how-step">Step 03 · Settle</div>
+                <div className="how-title">Collect once funded</div>
+                <div className="how-body">
+                  settle() is on-chain and permissionless — funds split automatically by the fee schedule the moment the deposit address is funded.
+                </div>
+              </div>
+            </div>
+          )}
+
           {scanState === 'loading' && (
             <div className="scan-empty">
               <div className="scan-empty-icon scanning">
@@ -585,22 +583,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   </div>
                 </div>
               ))}
-                {lbHasMore && (
-                  <button
-                    onClick={loadMoreLeaderboard}
-                    disabled={lbLoadingMore}
-                    style={{
-                      width: '100%', padding: '9px 14px', marginTop: '4px',
-                      borderRadius: '7px', border: '1px dashed var(--border)',
-                      background: 'transparent', cursor: 'pointer',
-                      fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
-                      fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-2)',
-                      opacity: lbLoadingMore ? 0.6 : 1,
-                    }}
-                  >
-                    {lbLoadingMore ? 'Loading…' : '▾ Load 10 More'}
-                  </button>
-                )}
+                <PageNav page={lbPage} totalPages={lbTotalPages} onChange={setLbPage} disabled={lbLoading} />
               </>
             )
             ) : (
@@ -651,22 +634,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                     </div>
                   )
                 })}
-                {activityHasMore && (
-                  <button
-                    onClick={loadMoreActivity}
-                    disabled={activityLoadingMore}
-                    style={{
-                      width: '100%', padding: '9px 14px', marginTop: '4px',
-                      borderRadius: '7px', border: '1px dashed var(--border)',
-                      background: 'transparent', cursor: 'pointer',
-                      fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
-                      fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-2)',
-                      opacity: activityLoadingMore ? 0.6 : 1,
-                    }}
-                  >
-                    {activityLoadingMore ? 'Loading…' : '▾ Load 10 More'}
-                  </button>
-                )}
+                <PageNav page={activityPage} totalPages={activityTotalPages} onChange={setActivityPage} disabled={activityLoading} />
               </>
             )
             )}
