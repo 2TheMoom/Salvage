@@ -33,13 +33,31 @@ export async function GET() {
     if (findsRes.error) throw findsRes.error
     if (claimsRes.error) throw claimsRes.error
 
+    // A find registers the scanned CONTRACT, not whatever token turned up
+    // stranded inside it — "Find registered · USDT" for a find on the USDC
+    // contract reads backwards. Look up each contract's own identity from
+    // the leaderboard (already populated by every scan) instead of using
+    // the stranded token's symbol.
+    const contractKeys = [...new Set((findsRes.data ?? []).map((f) => `${f.chain}:${f.recipient_contract.toLowerCase()}`))]
+    const contractLabels = new Map<string, string | null>()
+    if (contractKeys.length > 0) {
+      const { data: lbRows } = await supabase
+        .from('salvage_leaderboard')
+        .select('chain, contract_address, token_symbol, token_name')
+        .in('contract_address', (findsRes.data ?? []).map((f) => f.recipient_contract.toLowerCase()))
+      for (const row of lbRows ?? []) {
+        contractLabels.set(`${row.chain}:${row.contract_address.toLowerCase()}`, row.token_symbol || row.token_name)
+      }
+    }
+
     const items: ActivityItem[] = []
 
     for (const f of findsRes.data ?? []) {
+      const key = `${f.chain}:${f.recipient_contract.toLowerCase()}`
       items.push({
         type: 'find',
         chain: f.chain,
-        tokenSymbol: f.token_symbol,
+        tokenSymbol: contractLabels.get(key) ?? f.token_symbol,
         valueUsd: f.value_usd,
         address: f.finder_address,
         txHash: null,

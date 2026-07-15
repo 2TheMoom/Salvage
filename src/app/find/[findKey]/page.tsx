@@ -93,6 +93,8 @@ function TokenRow({ token, chain }: { token: TokenDetail; chain: string }) {
   )
 }
 
+const TOKEN_REVEAL_CHUNK = 15
+
 // A finder's own status page for a single find — pure DB lookup, no live
 // re-scan, reachable directly from the proactive dashboard panel instead of
 // forcing a full triage re-run just to check on something already recorded.
@@ -100,9 +102,10 @@ export default function FindDetailPage() {
   const params = useParams<{ findKey: string }>()
   const findKey = decodeURIComponent(params.findKey)
 
-  const [find, setFind]       = useState<FindDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
+  const [find, setFind]         = useState<FindDetail | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(TOKEN_REVEAL_CHUNK)
 
   useEffect(() => {
     fetch(`/api/finder-status?findKey=${encodeURIComponent(findKey)}`)
@@ -172,9 +175,21 @@ export default function FindDetailPage() {
               }}>
                 {find.tokens.length > 1 ? `${find.tokens.length} stranded tokens found inside` : 'Stranded token found inside'}
               </div>
-              {find.tokens.map((token) => (
+              {find.tokens.slice(0, visibleCount).map((token) => (
                 <TokenRow key={token.tokenAddress} token={token} chain={find.chain} />
               ))}
+              {find.tokens.length > visibleCount && (
+                <div
+                  onClick={() => setVisibleCount((n) => n + TOKEN_REVEAL_CHUNK)}
+                  style={{
+                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
+                    color: 'var(--eth)', fontWeight: 600, padding: '6px 2px',
+                  }}
+                >
+                  ▾ Show {Math.min(TOKEN_REVEAL_CHUNK, find.tokens.length - visibleCount)} more
+                  ({find.tokens.length - visibleCount} remaining)
+                </div>
+              )}
             </div>
 
             <div style={{

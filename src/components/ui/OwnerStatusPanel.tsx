@@ -272,8 +272,11 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
   )
 }
 
+const TOKEN_REVEAL_CHUNK = 10
+
 function FinderFindRow({ find }: { find: FinderFind }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded]       = useState(false)
+  const [visibleCount, setVisibleCount] = useState(TOKEN_REVEAL_CHUNK)
   const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
   const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
   const txHash = find.settleTx || find.registerTx
@@ -328,7 +331,7 @@ function FinderFindRow({ find }: { find: FinderFind }) {
 
       {multiple && expanded && (
         <div style={{ marginTop: '6px', paddingLeft: '14px', borderLeft: '2px solid var(--border)' }}>
-          {find.tokens.map((t) => {
+          {find.tokens.slice(0, visibleCount).map((t) => {
             const tCopy = FINDER_STATUS_COPY[t.claimStatus]
             return (
               <div key={t.tokenAddress} style={{ padding: '5px 0', fontFamily: 'var(--font-mono)', fontSize: '0.66rem' }}>
@@ -338,6 +341,18 @@ function FinderFindRow({ find }: { find: FinderFind }) {
               </div>
             )
           })}
+          {find.tokens.length > visibleCount && (
+            <div
+              onClick={() => setVisibleCount((n) => n + TOKEN_REVEAL_CHUNK)}
+              style={{
+                marginTop: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                fontSize: '0.64rem', color: 'var(--eth)', fontWeight: 600,
+              }}
+            >
+              ▾ Show {Math.min(TOKEN_REVEAL_CHUNK, find.tokens.length - visibleCount)} more
+              ({find.tokens.length - visibleCount} remaining)
+            </div>
+          )}
         </div>
       )}
     </div>
