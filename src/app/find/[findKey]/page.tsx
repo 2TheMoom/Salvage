@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ConnectButton from '@/components/ui/ConnectButton'
+import BackLink from '@/components/ui/BackLink'
 import { truncateAddress } from '@/lib/utils'
 
 type ClaimStatus =
@@ -143,9 +144,7 @@ export default function FindDetailPage() {
       </nav>
 
       <div style={{ maxWidth: '820px', margin: '0 auto', padding: '40px 40px 80px' }}>
-        <Link href="/finds" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--eth)' }}>
-          ← Back to Your Findings
-        </Link>
+        <BackLink href="/finds" label="Back to Your Findings" />
 
         {loading && (
           <div style={{ marginTop: '32px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>

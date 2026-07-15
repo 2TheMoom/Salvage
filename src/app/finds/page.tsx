@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ConnectButton from '@/components/ui/ConnectButton'
+import BackLink from '@/components/ui/BackLink'
 import FinderFindCard, { FinderFind } from '@/components/ui/FinderFindCard'
 
 // A finder's full findings list — the "Welcome back" dashboard card only
@@ -53,6 +54,10 @@ export default function MyFindsPage() {
       </nav>
 
       <div style={{ maxWidth: '820px', margin: '0 auto', padding: '40px 40px 80px' }}>
+        <div style={{ marginBottom: '22px' }}>
+          <BackLink href="/" label="Back to Dashboard" />
+        </div>
+
         <h1 style={{
           fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800,
           textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)', marginBottom: '6px',
