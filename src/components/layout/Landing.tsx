@@ -72,7 +72,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
             <span>Ethereum mainnet</span>
             <span>Base mainnet</span>
             <span>Alchemy + Etherscan API</span>
-            <span>On-chain fee contract</span>
+            <span>Non-custodial settlement router</span>
           </div>
         </div>
 
@@ -90,8 +90,8 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
           <div className="hc-row"><span className="hc-label">Recovery status</span><span className="hc-val green">Recoverable ✓</span></div>
           <div className="hc-footer">
             <div className="hc-footer-text">
-              Register this find on-chain. If the project recovers within 90 days,
-              your 7% routes to your wallet automatically.
+              Register your priority — a free signed message, no gas. Whenever the
+              owner recovers, your 7% routes to your wallet automatically.
             </div>
             <button className="hc-action" onClick={onOpenDashboard}>
               Register This Find →
@@ -160,18 +160,20 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
             </div>
             <div className="how-card">
               <div className="how-step">Step 02 · Register</div>
-              <div className="how-title">Claim your find on-chain</div>
+              <div className="how-title">Lock in your priority</div>
               <div className="how-body">
-                Register via the Salvage fee contract on Base. Your address and timestamp
-                are recorded permanently — proving you found it first.
+                One free signed message — no gas, no fee contract. First finder to
+                register a contract keeps priority; your cut is baked into the claim
+                whenever the owner recovers.
               </div>
             </div>
             <div className="how-card">
               <div className="how-step">Step 03 · Earn</div>
-              <div className="how-title">Collect when they recover</div>
+              <div className="how-title">Collect once it&apos;s recovered</div>
               <div className="how-body">
-                Reach out to the team with our generated outreach template. When they
-                execute recovery within 90 days, 7% routes directly to your wallet.
+                Optionally send the owner our generated outreach message to speed things
+                along. Whenever they act, settle() splits the recovery automatically —
+                7% to you, on-chain, no team required.
               </div>
             </div>
           </div>
@@ -270,8 +272,8 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
           </div>
         </div>
         <div className="l-footer-right">
-          <a href="#">Docs</a>
-          <a href="#">Fee Contract</a>
+          <a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a>
+          <a href="https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code" target="_blank" rel="noopener noreferrer">Router</a>
           <a href="/privacy">Privacy</a>
           <span className="credit">
             Built by{' '}
