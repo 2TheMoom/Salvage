@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import SonarLogo from '@/components/ui/SonarLogo'
+import ConnectButton from '@/components/ui/ConnectButton'
 import { truncateAddress } from '@/lib/utils'
 
 type ClaimStatus =
@@ -126,10 +128,23 @@ export default function FindDetailPage() {
   const contractLabel = find?.contractSymbol || find?.contractName || 'Unverified contract'
 
   return (
-    <div className="legal-page">
-      <div className="legal-container">
-        <Link href="/" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--eth)' }}>
-          ← Back to dashboard
+    <div id="dashboard">
+      <nav className="d-nav">
+        <Link href="/" className="d-logo">
+          <SonarLogo size={28} variant="white" showWordmark wordmarkSize="1.2rem" />
+        </Link>
+        <ul className="d-nav-links">
+          <li><Link href="/finds">Your Findings</Link></li>
+          <li><Link href="/">Dashboard</Link></li>
+        </ul>
+        <div className="d-nav-right">
+          <ConnectButton variant="dashboard" />
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: '820px', margin: '0 auto', padding: '40px 40px 80px' }}>
+        <Link href="/finds" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--eth)' }}>
+          ← Back to Your Findings
         </Link>
 
         {loading && (

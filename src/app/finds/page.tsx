@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
+import SonarLogo from '@/components/ui/SonarLogo'
+import ConnectButton from '@/components/ui/ConnectButton'
 import FinderFindCard, { FinderFind } from '@/components/ui/FinderFindCard'
 
 // A finder's full findings list — the "Welcome back" dashboard card only
 // ever shows a one-line summary (a wall of every active find gets unwieldy
 // fast once someone has several going at once), so this is where the full
-// picture lives. Pure DB lookup, no live re-scan.
+// picture lives. Pure DB lookup, no live re-scan. Uses the same nav shell as
+// the dashboard rather than the bare legal-page layout, since this is a real
+// part of the app a finder navigates to and from, not a static document.
 export default function MyFindsPage() {
   const { address, isConnected } = useAccount()
   const [finds, setFinds]     = useState<FinderFind[]>([])
@@ -35,40 +39,51 @@ export default function MyFindsPage() {
   })
 
   return (
-    <div className="legal-page">
-      <div className="legal-container">
-        <Link href="/" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--eth)' }}>
-          ← Back to dashboard
+    <div id="dashboard">
+      <nav className="d-nav">
+        <Link href="/" className="d-logo">
+          <SonarLogo size={28} variant="white" showWordmark wordmarkSize="1.2rem" />
         </Link>
+        <ul className="d-nav-links">
+          <li><Link href="/">Dashboard</Link></li>
+        </ul>
+        <div className="d-nav-right">
+          <ConnectButton variant="dashboard" />
+        </div>
+      </nav>
 
-        <h1 className="legal-title" style={{ fontSize: '1.9rem', marginTop: '22px' }}>
+      <div style={{ maxWidth: '820px', margin: '0 auto', padding: '40px 40px 80px' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800,
+          textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)', marginBottom: '6px',
+        }}>
           Your Findings
         </h1>
-        <div className="legal-updated">
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '28px' }}>
           {isConnected ? `${finds.length} find${finds.length === 1 ? '' : 's'} registered` : 'Connect your wallet to see your findings'}
         </div>
 
         {!isConnected && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)', marginTop: '12px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
             This page shows every contract you&apos;ve registered as a finder — connect the same wallet you used to register with.
           </div>
         )}
 
         {isConnected && loading && (
-          <div style={{ marginTop: '24px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
             Loading…
           </div>
         )}
 
         {isConnected && !loading && finds.length === 0 && (
-          <div style={{ marginTop: '24px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
             No findings registered yet. Scan a contract and register a find to see it here.
           </div>
         )}
 
         {isConnected && !loading && sorted.length > 0 && (
           <div style={{
-            marginTop: '20px', padding: '4px 18px', borderRadius: '12px',
+            padding: '4px 18px', borderRadius: '12px',
             background: 'var(--card)', border: '1px solid var(--border-md)',
           }}>
             {sorted.map((find) => (
