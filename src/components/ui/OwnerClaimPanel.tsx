@@ -9,6 +9,7 @@ import { keccak256, encodeAbiParameters, encodeFunctionData, zeroAddress, type A
 import { config } from '@/lib/wagmi'
 import {
   RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, ROUTER_EIP712_TYPES,
+  BATCH_WRAPPER_ADDRESS, BATCH_WRAPPER_ABI, BATCH_MAX_SIZE,
   routerDomain, USDC_ABI, contractScanLossTxHash,
 } from '@/lib/contracts'
 import { Chain, StrandedToken, RescueAbiEntry } from '@/types'
@@ -54,6 +55,19 @@ type RowState = 'idle' | 'signing' | 'registering' | 'registered' | 'settling' |
 interface RowHandle {
   register: () => Promise<void>
   settle: () => Promise<void>
+  // Used by the wrapper batch flow: after a batch transaction confirms, each
+  // affected row re-reads its own on-chain state (so a token that actually
+  // failed inside the wrapper's try/catch correctly stays unregistered/
+  // unsettled — reality, not batch intent, drives what each row shows) and
+  // records the shared batch tx hash for its own explorer link.
+  refetch: () => void
+  setTxHash: (kind: 'register' | 'settle', hash: string) => void
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
 }
 
 interface OwnerClaimPanelProps {
@@ -74,6 +88,14 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
   const { address, isConnected } = useAccount()
   const isOwner = isConnected && address?.toLowerCase() === ownerAddress.toLowerCase()
 
+  const chainId        = CHAIN_IDS[chain]
+  const routerAddress  = RECOVERY_ROUTER_ADDRESS[chainId]
+  const wrapperAddress = BATCH_WRAPPER_ADDRESS[chainId]
+
+  const { switchChainAsync }   = useSwitchChain()
+  const { signTypedDataAsync } = useSignTypedData()
+  const { writeContractAsync } = useWriteContract()
+
   const [registeredFinder, setRegisteredFinder] = useState<string | null>(null)
 
   useEffect(() => {
@@ -92,6 +114,15 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
       .catch(() => {})
   }, [chain, contractAddress, ownerAddress, isOwner])
 
+  const finderForClaim = (registeredFinder ?? zeroAddress) as `0x${string}`
+  const lossTxHash = useMemo(() => contractScanLossTxHash(contractAddress), [contractAddress])
+
+  const computeClaimId = (tokenAddress: string): `0x${string}` =>
+    keccak256(encodeAbiParameters(
+      [{ type: 'address' }, { type: 'address' }, { type: 'address' }, { type: 'bytes32' }],
+      [tokenAddress as `0x${string}`, ownerAddress as `0x${string}`, finderForClaim, lossTxHash]
+    ))
+
   // Per-token live status, reported up by each row — drives the "Register
   // All" / "Settle All" batch actions and which tokens they cover. A single
   // stranded token never needs this (the per-row buttons already cover it),
@@ -101,6 +132,7 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
   const rowRefs = useRef<Map<string, RowHandle>>(new Map())
   const [batchRunning, setBatchRunning]   = useState<'register' | 'settle' | null>(null)
   const [batchProgress, setBatchProgress] = useState(0)
+  const [batchChunkInfo, setBatchChunkInfo] = useState<{ current: number; total: number } | null>(null)
 
   const handleStatusChange = (tokenAddress: string, state: RowState, funded: boolean) => {
     setRowStatus((prev) => ({ ...prev, [tokenAddress]: { state, funded } }))
@@ -121,20 +153,137 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
   const allSettled = tokens.length > 1
     && tokens.every((t) => rowStatus[t.tokenAddress]?.state === 'settled')
 
-  // Sequential, not parallel — each step needs its own wallet signature, and
-  // firing them all at once would just flood the wallet with simultaneous
-  // prompts. handleRegister/handleSettle already catch and display their own
-  // errors internally rather than throwing, so one rejected signature simply
-  // gets skipped over rather than aborting the rest of the batch.
-  const runBatch = async (kind: 'register' | 'settle', queue: StrandedToken[]) => {
-    setBatchRunning(kind)
+  // Batches of up to BATCH_MAX_SIZE tokens, each as one SalvageBatchWrapper
+  // transaction. Registering still needs one EIP-712 signature per token
+  // (the router verifies each independently — that can't be skipped without
+  // the router itself changing), but those are fast, free, off-chain
+  // signatures, not separate transactions. Settling needs no signature at
+  // all, so it's a full one-click-per-chunk win. A chunk's transaction
+  // failing (e.g. rejected in the wallet) leaves that chunk's rows exactly
+  // as they were — nothing landed on-chain, so nothing to undo.
+  const runBatchRegister = async (queue: StrandedToken[]) => {
+    setBatchRunning('register')
     setBatchProgress(0)
-    for (const token of queue) {
-      const handle = rowRefs.current.get(token.tokenAddress)
-      if (handle) await handle[kind]()
-      setBatchProgress((n) => n + 1)
+    const groups = chunk(queue, BATCH_MAX_SIZE)
+    await switchChainAsync({ chainId }).catch(() => {})
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600)
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g]
+      setBatchChunkInfo({ current: g + 1, total: groups.length })
+
+      const signatures: `0x${string}`[] = []
+      for (const token of group) {
+        try {
+          const sig = await signTypedDataAsync({
+            domain: routerDomain(chainId),
+            types: ROUTER_EIP712_TYPES,
+            primaryType: 'RecoveryClaim',
+            message: {
+              token:  token.tokenAddress as `0x${string}`,
+              victim: ownerAddress as `0x${string}`,
+              finder: finderForClaim,
+              lossTxHash,
+              deadline,
+            },
+          })
+          signatures.push(sig)
+        } catch {
+          // A rejected/failed signature can't be submitted — pass an empty
+          // one through so the wrapper's per-token try/catch skips just
+          // this token instead of blocking the rest of the group.
+          signatures.push('0x')
+        }
+        setBatchProgress((n) => n + 1)
+      }
+
+      try {
+        const txHash = await writeContractAsync({
+          address: wrapperAddress,
+          abi: BATCH_WRAPPER_ABI,
+          functionName: 'batchRegisterClaims',
+          args: [
+            group.map((t) => t.tokenAddress as `0x${string}`),
+            ownerAddress as `0x${string}`,
+            finderForClaim,
+            lossTxHash,
+            deadline,
+            signatures,
+          ],
+          chainId,
+        })
+        await waitForTransactionReceipt(config, { hash: txHash, chainId })
+
+        for (const token of group) {
+          const claimId = computeClaimId(token.tokenAddress)
+          // The API verifies each claim directly on-chain before recording
+          // it — a token that actually failed inside the wrapper simply
+          // won't be found yet, and this call harmlessly 404s for it.
+          fetch('/api/claims', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              claimId, chain,
+              tokenSymbol: token.tokenSymbol,
+              valueUsd:    token.valueUsd,
+              registerTx:  txHash,
+            }),
+          }).catch(() => {})
+          const handle = rowRefs.current.get(token.tokenAddress)
+          handle?.setTxHash('register', txHash)
+          handle?.refetch()
+        }
+      } catch {
+        // This chunk's transaction itself failed/was rejected — nothing in
+        // it landed on-chain, so its rows are simply unchanged.
+      }
     }
     setBatchRunning(null)
+    setBatchChunkInfo(null)
+  }
+
+  const runBatchSettle = async (queue: StrandedToken[]) => {
+    setBatchRunning('settle')
+    setBatchProgress(0)
+    const groups = chunk(queue, BATCH_MAX_SIZE)
+    await switchChainAsync({ chainId }).catch(() => {})
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g]
+      setBatchChunkInfo({ current: g + 1, total: groups.length })
+      const claimIds = group.map((t) => computeClaimId(t.tokenAddress))
+
+      try {
+        const txHash = await writeContractAsync({
+          address: wrapperAddress,
+          abi: BATCH_WRAPPER_ABI,
+          functionName: 'batchSettle',
+          args: [claimIds],
+          chainId,
+        })
+        await waitForTransactionReceipt(config, { hash: txHash, chainId })
+
+        for (const token of group) {
+          const claimId = computeClaimId(token.tokenAddress)
+          // Same on-chain verification as the single-token flow — a claim
+          // that wasn't actually funded yet correctly 400s here rather than
+          // being marked settled.
+          fetch('/api/claims', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ claimId, settleTx: txHash }),
+          }).catch(() => {})
+          const handle = rowRefs.current.get(token.tokenAddress)
+          handle?.setTxHash('settle', txHash)
+          handle?.refetch()
+        }
+      } catch {
+        // Chunk's transaction failed/was rejected — its rows are unchanged.
+      }
+      setBatchProgress((n) => n + group.length)
+    }
+    setBatchRunning(null)
+    setBatchChunkInfo(null)
   }
 
   return (
@@ -174,7 +323,7 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {pendingRegistration.length > 1 && (
               <button
-                onClick={() => runBatch('register', pendingRegistration)}
+                onClick={() => runBatchRegister(pendingRegistration)}
                 disabled={!!batchRunning}
                 style={{
                   padding: '7px 12px', borderRadius: '6px', border: 'none',
@@ -190,7 +339,7 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
             )}
             {readyToSettle.length > 1 && (
               <button
-                onClick={() => runBatch('settle', readyToSettle)}
+                onClick={() => runBatchSettle(readyToSettle)}
                 disabled={!!batchRunning}
                 style={{
                   padding: '7px 12px', borderRadius: '6px', border: 'none',
@@ -207,7 +356,10 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
           </div>
           {batchRunning && (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '5px' }}>
-              You&apos;ll be prompted in your wallet once per token — please confirm each one as it comes up.
+              {batchRunning === 'register'
+                ? "You'll be prompted to sign once per token (quick, free), then confirm one transaction per batch of 20."
+                : "One transaction confirmation per batch of 20 — no signatures needed to settle."}
+              {batchChunkInfo && batchChunkInfo.total > 1 && ` Batch ${batchChunkInfo.current}/${batchChunkInfo.total}.`}
             </div>
           )}
         </div>
@@ -278,18 +430,28 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
     } catch { return undefined }
   }, [token.tokenAddress, ownerAddress, finderForClaim, lossTxHash])
 
+  const [everRegistered, setEverRegistered] = useState(false)
   const { data: existingClaim, refetch: refetchClaim } = useReadContract({
     address: routerAddress,
     abi: ROUTER_ABI,
     functionName: 'claims',
     args: claimId ? [claimId] : undefined,
     chainId,
-    query: { enabled: !!claimId },
+    // settle() is permissionless — a finder or anyone else could call it
+    // directly without going through Salvage's UI at all, so this needs the
+    // same "poll while it could change externally" treatment as funding.
+    query: { enabled: !!claimId, refetchInterval: everRegistered ? 8000 : false },
   })
   const alreadyRegistered = existingClaim && existingClaim[1] !== zeroAddress
   const alreadySettledOnChain = !!existingClaim && (existingClaim[5] as bigint) > 0n
   const isSettled = alreadySettledOnChain || state === 'settled'
   const isRegistered = alreadyRegistered || state === 'registered' || state === 'settled'
+
+  useEffect(() => {
+    if (isRegistered && !isSettled) setEverRegistered(true)
+    if (isSettled) setEverRegistered(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRegistered, isSettled])
 
   const { data: receiver } = useReadContract({
     address: routerAddress,
@@ -300,13 +462,22 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
     query: { enabled: !!claimId },
   })
 
+  // Funding happens by the owner calling their own contract's rescue
+  // function — entirely outside Salvage's UI, so there's no "we just did
+  // this, refetch now" moment to hook into like there is for register/
+  // settle. Polling while registered-but-not-yet-funded is the only way
+  // "Funded — ready to settle" can appear without a manual page refresh.
+  const awaitingFunding = isRegistered && !isSettled
   const { data: receiverBalance, refetch: refetchBalance } = useReadContract({
     address: token.tokenAddress as `0x${string}`,
     abi: USDC_ABI,
     functionName: 'balanceOf',
     args: receiver ? [receiver] : undefined,
     chainId,
-    query: { enabled: !!receiver && (!!alreadyRegistered || state === 'registered' || state === 'settled') },
+    query: {
+      enabled: !!receiver && (!!alreadyRegistered || state === 'registered' || state === 'settled'),
+      refetchInterval: awaitingFunding ? 8000 : false,
+    },
   })
   const funded = (receiverBalance ?? 0n) > 0n
 
@@ -476,6 +647,8 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
   useImperativeHandle(ref, () => ({
     register: handleRegister,
     settle: handleSettle,
+    refetch: () => { refetchClaim(); refetchBalance() },
+    setTxHash: (kind, hash) => { kind === 'register' ? setRegisterTx(hash) : setSettleTx(hash) },
   }))
 
   const copyReceiverInstructions = async () => {
@@ -540,7 +713,7 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
             </button>
             {funded && (
               <button onClick={handleSettle} disabled={state === 'settling'}
-                style={{ ...btnStyle, background: 'var(--green)', color: '#fff', border: 'none' }}>
+                style={{ ...btnStyle, background: 'var(--green)', color: '#fff', border: 'none', opacity: state === 'settling' ? 0.6 : 1 }}>
                 {state === 'settling' ? 'Settling…' : 'Settle'}
               </button>
             )}
@@ -595,7 +768,10 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
         </div>
       ) : (
         <button onClick={handleRegister} disabled={state === 'signing' || state === 'registering'}
-          style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none' }}>
+          style={{
+            ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none',
+            opacity: (state === 'signing' || state === 'registering') ? 0.6 : 1,
+          }}>
           {state === 'signing'      ? 'Sign in your wallet…'
           : state === 'registering' ? 'Registering…'
           : 'Register & Recover'}

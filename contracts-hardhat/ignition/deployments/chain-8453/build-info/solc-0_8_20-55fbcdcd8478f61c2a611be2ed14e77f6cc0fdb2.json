@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-55fbcdcd8478f61c2a611be2ed14e77f6cc0fdb2",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.9.0"
+  },
+  "userSourceNameMap": {
+    "contracts/SalvageBatchWrapper.sol": "project/contracts/SalvageBatchWrapper.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/SalvageBatchWrapper.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ninterface ISalvageRecoveryRouter {\n    function registerClaim(\n        address token,\n        address victim,\n        address finder,\n        bytes32 lossTxHash,\n        uint256 deadline,\n        bytes calldata victimSignature\n    ) external returns (bytes32 claimId, address receiver);\n\n    function settle(bytes32 claimId) external;\n}\n\n/**\n * @title SalvageBatchWrapper\n * @notice Purely additive orchestration layer over SalvageRecoveryRouter —\n * batches N register/settle calls into one transaction without touching or\n * trusting anything beyond calling the router's own existing, permissioned\n * functions. Holds no funds, has no admin role, verifies nothing itself:\n * the router still independently checks every signature and moves every\n * token exactly as it already does when called directly.\n *\n * Registering N tokens still needs N EIP-712 signatures — the router checks\n * one per call, scoped to a single token, and that check can't be bypassed\n * from outside it — but this collapses N transactions into one. Settling\n * needs no signature at all (settle() is already permissionless), so\n * batching it is a full one-click win with no caveat.\n *\n * A batch cap (MAX_BATCH_SIZE) exists purely to keep a single transaction\n * within a safe gas envelope. Callers with more tokens than that submit\n * multiple batches — chunking handled by the frontend, not this contract.\n */\ncontract SalvageBatchWrapper {\n    ISalvageRecoveryRouter public immutable router;\n    uint256 public constant MAX_BATCH_SIZE = 20;\n\n    event BatchRegistered(uint256 count, uint256 succeeded);\n    event BatchSettled(uint256 count, uint256 succeeded);\n\n    error EmptyBatch();\n    error BatchTooLarge();\n    error LengthMismatch();\n\n    constructor(address _router) {\n        require(_router != address(0), \"zero router\");\n        router = ISalvageRecoveryRouter(_router);\n    }\n\n    /// @notice Registers up to MAX_BATCH_SIZE claims in one transaction, all\n    /// sharing the same victim/finder/lossTxHash/deadline (the contract-level\n    /// find case this exists for) — each token still carries its own\n    /// signature, verified independently by the router exactly as if called\n    /// directly. One token failing (already registered, bad signature, past\n    /// deadline) does not revert the rest of the batch; check `succeeded`\n    /// per index to see which ones actually landed.\n    function batchRegisterClaims(\n        address[] calldata tokens,\n        address victim,\n        address finder,\n        bytes32 lossTxHash,\n        uint256 deadline,\n        bytes[] calldata signatures\n    ) external returns (bool[] memory succeeded, bytes32[] memory claimIds) {\n        uint256 len = tokens.length;\n        if (len == 0) revert EmptyBatch();\n        if (len > MAX_BATCH_SIZE) revert BatchTooLarge();\n        if (signatures.length != len) revert LengthMismatch();\n\n        succeeded = new bool[](len);\n        claimIds  = new bytes32[](len);\n        uint256 successCount;\n\n        for (uint256 i = 0; i < len; i++) {\n            try router.registerClaim(tokens[i], victim, finder, lossTxHash, deadline, signatures[i])\n                returns (bytes32 claimId, address)\n            {\n                succeeded[i] = true;\n                claimIds[i]  = claimId;\n                unchecked { successCount++; }\n            } catch {\n                // leave succeeded[i] = false, claimIds[i] = bytes32(0) — this\n                // one token is skipped, the rest of the batch still proceeds.\n            }\n        }\n\n        emit BatchRegistered(len, successCount);\n    }\n\n    /// @notice Settles up to MAX_BATCH_SIZE claims in one transaction.\n    /// Fully permissionless, identical to calling settle() directly for\n    /// each — a claim that isn't funded yet, or has nothing new to sweep,\n    /// is skipped rather than reverting the rest of the batch.\n    function batchSettle(bytes32[] calldata claimIds)\n        external\n        returns (bool[] memory succeeded)\n    {\n        uint256 len = claimIds.length;\n        if (len == 0) revert EmptyBatch();\n        if (len > MAX_BATCH_SIZE) revert BatchTooLarge();\n\n        succeeded = new bool[](len);\n        uint256 successCount;\n\n        for (uint256 i = 0; i < len; i++) {\n            try router.settle(claimIds[i]) {\n                succeeded[i] = true;\n                unchecked { successCount++; }\n            } catch {\n                // leave succeeded[i] = false — this claim is skipped, the\n                // rest of the batch still proceeds.\n            }\n        }\n\n        emit BatchSettled(len, successCount);\n    }\n}\n"
+      }
+    }
+  }
+}

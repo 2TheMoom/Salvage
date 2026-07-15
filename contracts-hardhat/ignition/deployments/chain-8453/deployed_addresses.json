@@ -3,5 +3,11 @@
   "SalvageRecoveryRouter#SalvageRecoveryRouter": "0x2240792d1A9D964d238bD693fCb09586B10faEdf",
   "MockTestTokensModule#MockA": "0xAB639c16dC8F3034E27aBb32894B1b9204fa09f8",
   "MockTestTokensModule#MockB": "0x7C16F2f7BA9D2B849df9Ca6A4dc9b9014d598347",
-  "MockTestTokensModule#MockC": "0x40E9CA5144090a09554F21AEffED8C5E5d083479"
+  "MockTestTokensModule#MockC": "0x40E9CA5144090a09554F21AEffED8C5E5d083479",
+  "SalvageBatchWrapperModule#SalvageBatchWrapper": "0xAe2A4E0f19300eBAA8D9408210F941A771103690",
+  "MockTestTokensRound2Module#MockD": "0x49C9Ba4a3Cc72889d17AFfE4eADD64E2235D0038",
+  "MockTestTokensRound2Module#MockE": "0xdBAdE0C80C261c9396c40D495ca6Bb838bbB38fF",
+  "MockTestTokensRound2Module#MockF": "0xfb9424315453dd8Ea52663C0385451c7D0D9e978",
+  "MockTestTokensRound2Module#MockG": "0x611ab5a9Dfab23Cac68c22F0283595536472Ba47",
+  "MockTestTokensRound2Module#MockH": "0xDc710D52dE82f43a6095335639618C0f235E034C"
 }

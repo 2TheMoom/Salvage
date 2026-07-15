@@ -97,9 +97,10 @@ Recovery never depends on trusting anyone:
 | Contract | Ethereum | Base |
 |---|---|---|
 | **SalvageRecoveryRouter** (active) | [`0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25`](https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code) | [`0x2240792d1A9D964d238bD693fCb09586B10faEdf`](https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code) |
+| **SalvageBatchWrapper** (active) | [`0xff2605c1cFC8fF3b2c8Dfde91E72E98595676995`](https://etherscan.io/address/0xff2605c1cFC8fF3b2c8Dfde91E72E98595676995#code) | [`0xAe2A4E0f19300eBAA8D9408210F941A771103690`](https://basescan.org/address/0xAe2A4E0f19300eBAA8D9408210F941A771103690#code) |
 | **SalvageFeeContract** (legacy, unused) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://etherscan.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) | [`0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27`](https://basescan.org/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27#code) |
 
-Both contracts verified on **Etherscan/Basescan, Blockscout, and Sourcify**. The Fee Contract was an earlier design (manual founder-confirmed recoveries, ETH-denominated fees) fully superseded by the Router's permissionless, signature-based settlement — the app no longer calls it, and it never held stranded ERC-20 tokens.
+All active contracts verified on **Etherscan/Basescan, Blockscout, and Sourcify**. The Fee Contract was an earlier design (manual founder-confirmed recoveries, ETH-denominated fees) fully superseded by the Router's permissionless, signature-based settlement — the app no longer calls it, and it never held stranded ERC-20 tokens.
 
 ## Security model
 
@@ -170,6 +171,10 @@ npx hardhat test
 
 - **✅ Batch settlement for multi-token contracts:** a contract holding several stranded tokens no longer needs a separate register→settle cycle per token — "Register All" and "Settle All" walk through every stranded token in one guided sequence (still one wallet signature per token, just no re-navigating between them). Verified end-to-end against the real deployed Router with mock tokens before shipping.
 
+### Shipped — v1.3
+
+- **✅ True single-transaction batch settlement:** `SalvageBatchWrapper` is a small, additive contract that sits alongside the router — never modifies it, holds no funds, has no admin role — and loops `registerClaim`/`settle` calls into one transaction per batch of up to 20 tokens. Settling needs no signature at all (it never did), so batch settlement is a genuine one-click win. Registering still needs one EIP-712 signature per token — the router verifies each independently and that can't be skipped without the router itself changing — but those are fast, free, off-chain signatures, not separate transactions: "Register All" now means N quick signature prompts followed by *one* transaction confirmation per batch, not N of each. A contract holding more than 20 tokens is chunked into multiple batches automatically. One token failing inside a batch (bad signature, not yet funded) doesn't revert the rest — verified in both the contract's own test suite and live against real deployed contracts before shipping. Deployed and verified on Etherscan, Basescan, Blockscout, and Sourcify on both chains.
+
 ### Up next
 
 - **Arc Network support:** Circle's Arc mainnet is expected this summer — Salvage will support it within days of launch. EVM-compatible, so the existing router deploys as-is; just a new chain config and verification pass.
@@ -177,7 +182,6 @@ npx hardhat test
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
 - **Proactive re-scanning:** periodically re-check known contracts (not just on-demand) so an owner can be notified the moment something new gets stranded, not only when they happen to revisit.
 - **Public scan API:** let other wallets and explorers check an address for stranded tokens directly, instead of only through this site.
-- **Single-transaction batch settlement:** the guided multi-token flow above still needs one signature per token; collapsing that into one EIP-712 signature and one on-chain call is a real contract change (new typed-data schema, new function) that deserves its own review — tracked separately from the UI-only version above.
 
 ## Vision
 

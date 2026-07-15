@@ -141,6 +141,49 @@ export const RECOVERY_ROUTER_ADDRESS: Record<number, `0x${string}`> = {
   8453: '0x2240792d1A9D964d238bD693fCb09586B10faEdf', // Base mainnet
 }
 
+// ═══════════════════════════════════════════════════════════
+//  SalvageBatchWrapper — additive orchestration over the router.
+//  Never modifies it, holds no funds, has no admin role — purely loops
+//  registerClaim/settle calls into one transaction. See its own contract
+//  docstring for the full design rationale.
+// ═══════════════════════════════════════════════════════════
+
+export const BATCH_WRAPPER_ADDRESS: Record<number, `0x${string}`> = {
+  1:    '0xff2605c1cFC8fF3b2c8Dfde91E72E98595676995', // ETH mainnet
+  8453: '0xAe2A4E0f19300eBAA8D9408210F941A771103690', // Base mainnet
+}
+
+// Mirrors the contract's own MAX_BATCH_SIZE constant — kept in sync here
+// rather than read on-chain each time, since it's fixed at deploy time.
+export const BATCH_MAX_SIZE = 20
+
+export const BATCH_WRAPPER_ABI = [
+  {
+    name: 'batchRegisterClaims',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokens',     type: 'address[]' },
+      { name: 'victim',     type: 'address' },
+      { name: 'finder',     type: 'address' },
+      { name: 'lossTxHash', type: 'bytes32' },
+      { name: 'deadline',   type: 'uint256' },
+      { name: 'signatures', type: 'bytes[]' },
+    ],
+    outputs: [
+      { name: 'succeeded', type: 'bool[]' },
+      { name: 'claimIds',  type: 'bytes32[]' },
+    ],
+  },
+  {
+    name: 'batchSettle',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'claimIds', type: 'bytes32[]' }],
+    outputs: [{ name: 'succeeded', type: 'bool[]' }],
+  },
+] as const
+
 export const ROUTER_ABI = [
   {
     name: 'registerClaim',
