@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-const PAGE_SIZE = 15
+const PAGE_SIZE = 10
 
 export async function GET(req: NextRequest) {
   try {

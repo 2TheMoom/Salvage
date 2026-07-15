@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -14,20 +14,30 @@ interface ActivityItem {
   timestamp: string
 }
 
+const PAGE_SIZE = 10
+
 // Chronological feed, not a ranked leaderboard — real volume is still low
 // enough that a "Top Finders" or "Settled Recoveries" ranking would show
 // one entry and read as dead rather than new. A timeline reads as "this is
 // real and growing" from the same one entry.
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0)
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
+    // Two tables get merged and re-sorted chronologically, and a settled
+    // claim produces two items (registered + settled) — over-fetch raw rows
+    // from each table so this page comes out correctly ordered once merged,
+    // capped so a large offset can't trigger an unbounded query.
+    const fetchLimit = Math.min(offset + PAGE_SIZE + 1, 250) * 2
     const [findsRes, claimsRes] = await Promise.all([
-      supabase.from('salvage_finds').select('*').order('created_at', { ascending: false }).limit(20),
-      supabase.from('salvage_claims').select('*').order('created_at', { ascending: false }).limit(20),
+      supabase.from('salvage_finds').select('*').order('created_at', { ascending: false }).limit(fetchLimit),
+      supabase.from('salvage_claims').select('*').order('created_at', { ascending: false }).limit(fetchLimit),
     ])
 
     if (findsRes.error) throw findsRes.error
@@ -90,9 +100,14 @@ export async function GET() {
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    return NextResponse.json({ success: true, items: items.slice(0, 15) })
+    const hasMore = items.length > offset + PAGE_SIZE
+    return NextResponse.json({
+      success: true,
+      items: items.slice(offset, offset + PAGE_SIZE),
+      hasMore,
+    })
   } catch (err) {
     console.error('[/api/activity] error:', err)
-    return NextResponse.json({ success: false, error: 'Failed to fetch activity', items: [] }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to fetch activity', items: [], hasMore: false }, { status: 500 })
   }
 }

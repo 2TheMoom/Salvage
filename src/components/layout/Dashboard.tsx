@@ -172,16 +172,41 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
 
   // Recent activity — a chronological feed rather than a ranked leaderboard,
   // since real volume (finds/claims) is still low enough that a ranking
-  // would show one entry and read as dead rather than new.
+  // would show one entry and read as dead rather than new. Paged 10 at a
+  // time, same reasoning as the leaderboard — don't dump everything fetched
+  // into the DOM at once as real volume grows.
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [activityLoading, setActivityLoading] = useState(true)
+  const [activityLoadingMore, setActivityLoadingMore] = useState(false)
+  const [activityHasMore, setActivityHasMore] = useState(false)
   useEffect(() => {
     fetch('/api/activity')
       .then((r) => r.json())
-      .then((d) => { if (d.success) setActivity(d.items || []) })
+      .then((d) => {
+        if (d.success) {
+          setActivity(d.items || [])
+          setActivityHasMore(!!d.hasMore)
+        }
+      })
       .catch(() => {})
       .finally(() => setActivityLoading(false))
   }, [])
+
+  const loadMoreActivity = useCallback(async () => {
+    setActivityLoadingMore(true)
+    try {
+      const res  = await fetch(`/api/activity?offset=${activity.length}`)
+      const data = await res.json()
+      if (data.success) {
+        setActivity((prev) => [...prev, ...(data.items || [])])
+        setActivityHasMore(!!data.hasMore)
+      }
+    } catch {
+      // leave the list as-is; the Load More button just stays put to retry
+    } finally {
+      setActivityLoadingMore(false)
+    }
+  }, [activity.length])
 
   const runScan = useCallback(async (addr: string, scanChain: Chain, scanMode: 'contract' | 'victim') => {
     if (!isValidAddress(addr)) {
@@ -573,7 +598,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                       opacity: lbLoadingMore ? 0.6 : 1,
                     }}
                   >
-                    {lbLoadingMore ? 'Loading…' : '▾ Load 15 More'}
+                    {lbLoadingMore ? 'Loading…' : '▾ Load 10 More'}
                   </button>
                 )}
               </>
@@ -596,35 +621,53 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                 No activity yet.<br />Be the first to register a find or claim.
               </div>
             ) : (
-              activity.map((item, i) => {
-                const explorer = item.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
-                return (
-                  <div key={i} className="lb-row" style={{ cursor: item.txHash ? 'pointer' : 'default' }}
-                    onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}
-                    title={item.txHash ? 'View transaction' : undefined}
+              <>
+                {activity.map((item, i) => {
+                  const explorer = item.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+                  return (
+                    <div key={i} className="lb-row" style={{ cursor: item.txHash ? 'pointer' : 'default' }}
+                      onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}
+                      title={item.txHash ? 'View transaction' : undefined}
+                    >
+                      <div className="lb-rank" style={{
+                        background: item.type === 'claim_settled' ? 'var(--green-soft)' : 'var(--eth-soft)',
+                        color: item.type === 'claim_settled' ? 'var(--green)' : 'var(--eth)',
+                      }}>
+                        {item.type === 'find' ? '🔍' : item.type === 'claim_registered' ? '📝' : '✅'}
+                      </div>
+                      <div className="lb-info">
+                        <div className="lb-addr">
+                          {ACTIVITY_LABEL[item.type]} · {item.tokenSymbol || 'tokens'}
+                        </div>
+                        <div className="lb-desc">
+                          {truncateAddress(item.address)} · {timeAgo(item.timestamp)}
+                        </div>
+                      </div>
+                      <div className="lb-right">
+                        <div className="lb-usd">
+                          {item.valueUsd != null ? formatUsdShort(item.valueUsd) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {activityHasMore && (
+                  <button
+                    onClick={loadMoreActivity}
+                    disabled={activityLoadingMore}
+                    style={{
+                      width: '100%', padding: '9px 14px', marginTop: '4px',
+                      borderRadius: '7px', border: '1px dashed var(--border)',
+                      background: 'transparent', cursor: 'pointer',
+                      fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
+                      fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-2)',
+                      opacity: activityLoadingMore ? 0.6 : 1,
+                    }}
                   >
-                    <div className="lb-rank" style={{
-                      background: item.type === 'claim_settled' ? 'var(--green-soft)' : 'var(--eth-soft)',
-                      color: item.type === 'claim_settled' ? 'var(--green)' : 'var(--eth)',
-                    }}>
-                      {item.type === 'find' ? '🔍' : item.type === 'claim_registered' ? '📝' : '✅'}
-                    </div>
-                    <div className="lb-info">
-                      <div className="lb-addr">
-                        {ACTIVITY_LABEL[item.type]} · {item.tokenSymbol || 'tokens'}
-                      </div>
-                      <div className="lb-desc">
-                        {truncateAddress(item.address)} · {timeAgo(item.timestamp)}
-                      </div>
-                    </div>
-                    <div className="lb-right">
-                      <div className="lb-usd">
-                        {item.valueUsd != null ? formatUsdShort(item.valueUsd) : '—'}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
+                    {activityLoadingMore ? 'Loading…' : '▾ Load 10 More'}
+                  </button>
+                )}
+              </>
             )
             )}
           </div>
