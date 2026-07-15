@@ -51,6 +51,8 @@ interface FinderFind {
   chain: string
   valueUsd: number | null
   recipientContract: string
+  contractName: string | null
+  contractSymbol: string | null
   createdAt: string
   claimStatus: FinderClaimStatus
   registerTx: string | null
@@ -275,24 +277,32 @@ function FinderFindRow({ find }: { find: FinderFind }) {
   const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
   const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
   const txHash = find.settleTx || find.registerTx
-  const symbolList = find.tokens.map((t) => t.tokenSymbol || 'token').join(', ') || 'tokens'
   const multiple = find.tokens.length > 1
+  // The registration is for the scanned CONTRACT, not the tokens found
+  // stranded inside it — lead with the contract's own identity.
+  const contractLabel = find.contractSymbol || find.contractName || 'Unverified contract'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
         <div>
-          <div
-            style={{
-              fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)',
-              cursor: multiple ? 'pointer' : 'default',
-            }}
-            onClick={() => multiple && setExpanded((e) => !e)}
-          >
-            {multiple && <span style={{ color: 'var(--text-3)', marginRight: '4px' }}>{expanded ? '▾' : '▸'}</span>}
-            {symbolList} find
-            {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)}</span>}
+          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+            Contract found: {contractLabel}
+            {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)} stranded</span>}
             <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-2)' }}>
+            Stranded:{' '}
+            {multiple ? (
+              <span
+                style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}
+                onClick={() => setExpanded((e) => !e)}
+              >
+                {find.tokens.length} tokens {expanded ? '▾' : '▸'}
+              </span>
+            ) : (
+              find.tokens[0]?.tokenSymbol || 'token'
+            )}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
             {statusCopy.label}

@@ -26,6 +26,8 @@ interface FindDetail {
   chain: string
   valueUsd: number | null
   recipientContract: string
+  contractName: string | null
+  contractSymbol: string | null
   victimWallet: string
   lossTxHash: string
   finderAddress: string
@@ -116,6 +118,9 @@ export default function FindDetailPage() {
   const explorer  = find?.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
   const chainName = find?.chain === 'eth' ? 'Ethereum' : 'Base'
   const overall   = find ? STATUS_COPY[find.claimStatus] : null
+  // The registration is for the scanned contract itself, not whatever
+  // tokens turned up stranded inside it — that's the headline identity.
+  const contractLabel = find?.contractSymbol || find?.contractName || 'Unverified contract'
 
   return (
     <div className="legal-page">
@@ -140,7 +145,7 @@ export default function FindDetailPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '22px', flexWrap: 'wrap' }}>
               <h1 className="legal-title" style={{ fontSize: '1.9rem', marginBottom: 0 }}>
-                Find on {chainName}
+                Contract found: {contractLabel}
               </h1>
               <span style={{
                 fontFamily: 'var(--font-mono)', fontSize: '0.66rem', fontWeight: 600,
@@ -150,8 +155,8 @@ export default function FindDetailPage() {
               </span>
             </div>
             <div className="legal-updated" style={{ marginBottom: '8px' }}>
-              Registered {new Date(find.createdAt).toLocaleDateString()}
-              {find.valueUsd != null && ` · $${find.valueUsd.toFixed(2)} total`}
+              {chainName} · Registered {new Date(find.createdAt).toLocaleDateString()}
+              {find.valueUsd != null && ` · $${find.valueUsd.toFixed(2)} stranded inside`}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '28px' }}>
               {STATUS_EXPLAIN[find.claimStatus]}
@@ -165,7 +170,7 @@ export default function FindDetailPage() {
                 fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700,
                 letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px',
               }}>
-                {find.tokens.length > 1 ? `${find.tokens.length} tokens found` : 'Token found'}
+                {find.tokens.length > 1 ? `${find.tokens.length} stranded tokens found inside` : 'Stranded token found inside'}
               </div>
               {find.tokens.map((token) => (
                 <TokenRow key={token.tokenAddress} token={token} chain={find.chain} />

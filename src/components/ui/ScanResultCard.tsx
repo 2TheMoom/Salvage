@@ -244,6 +244,8 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
           <>
             <RegisterFindButton
               contractAddress={result.contractAddress}
+              contractName={result.tokenName}
+              contractSymbol={result.tokenSymbol}
               tokens={strandedTokensForFind}
               chain={result.chain}
               triageStatus={result.triageStatus}

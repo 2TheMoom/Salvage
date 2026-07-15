@@ -8,6 +8,8 @@ import { Chain, StrandedToken } from '@/types'
 
 interface RegisterFindButtonProps {
   contractAddress: string
+  contractName?:   string
+  contractSymbol?: string
   tokens:          StrandedToken[]
   chain:           Chain
   triageStatus:    string
@@ -17,6 +19,8 @@ type FindState = 'idle' | 'signing' | 'registered' | 'taken' | 'error'
 
 export default function RegisterFindButton({
   contractAddress,
+  contractName,
+  contractSymbol,
   tokens,
   chain,
   triageStatus,
@@ -97,12 +101,18 @@ export default function RegisterFindButton({
       setState('signing')
       const primary = tokens[0]
       const symbolList = tokens.map((t) => t.tokenSymbol).filter(Boolean).join(', ') || 'stranded tokens'
+      // The registration is for the scanned CONTRACT — any tokens stranded
+      // inside it are the owner's to recover, not what's being "found" here.
+      // Leading with "Tokens found: USDT" reads as if the finder is claiming
+      // a specific token; leading with the contract's own identity is what
+      // this registration actually protects (first-finder-wins per contract).
+      const contractLabel = contractSymbol || contractName || 'this contract'
       const message =
         `Salvage finder registration\n\n` +
         `I am registering a discovered stranded contract and agree to the finder fee schedule ` +
         `(7% finder, 3% protocol) on successful recovery.\n\n` +
-        `Contract: ${contractAddress}\n` +
-        `Tokens found: ${symbolList}\n` +
+        `Contract found: ${contractLabel} (${contractAddress})\n` +
+        `Stranded tokens inside it: ${symbolList}\n` +
         `Chain: ${chain}\n` +
         `Finder: ${address}`
 

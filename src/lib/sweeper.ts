@@ -406,11 +406,21 @@ export async function sweepTokenBalances(
     for (let j = 0; j < batch.length; j++) {
       const meta = results[j]
       if (meta.status !== 'fulfilled' || !meta.value) continue
-      // VERIFIED FILTER: unknown tokens without an Alchemy curated logo are
-      // unverified long-tail/spam (thin-liquidity junk prices) — drop them.
-      if (!SYMBOL_MAP[batch[j].tokenAddress] && !meta.value.logo) continue
+      const token = batch[j]
+      const balanceNum = parseFloat(formatBalance(token.rawBalance, meta.value.decimals)) || 0
+      const estimatedValueUsd = balanceNum * token.priceUsd
+      // VERIFIED FILTER: a real Alchemy logo is one signal of legitimacy, but
+      // requiring it outright was dropping genuine tokens that simply aren't
+      // in Alchemy's curated set — that's how real value went missing. Below
+      // a small threshold, still require the logo (screens out thin-liquidity
+      // spam with manipulated fake prices, which is only actually a nuisance
+      // at low dollar amounts); above it, trust the priced value regardless —
+      // faking a *high* on-chain price requires real capital locked in the
+      // pool, which defeats the point of a cheap spam attack.
+      const LOGO_REQUIRED_BELOW_USD = 25
+      if (!SYMBOL_MAP[token.tokenAddress] && !meta.value.logo && estimatedValueUsd < LOGO_REQUIRED_BELOW_USD) continue
       const { logo: _logo, ...metaFields } = meta.value
-      withMetadata.push({ ...batch[j], ...metaFields })
+      withMetadata.push({ ...token, ...metaFields })
     }
   }
 

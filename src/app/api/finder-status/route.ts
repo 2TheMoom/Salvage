@@ -75,9 +75,20 @@ async function withClaimStatus(
     ? find.stranded_tokens
     : [{ tokenAddress: find.token_address, tokenSymbol: find.token_symbol, valueUsd: find.value_usd }]
 
-  const tokens = await Promise.all(
-    entries.map((entry) => tokenClaimStatus(supabase, find.chain, find.loss_tx_hash, entry, lower))
-  )
+  const [tokens, contractInfo] = await Promise.all([
+    Promise.all(entries.map((entry) => tokenClaimStatus(supabase, find.chain, find.loss_tx_hash, entry, lower))),
+    // The find registers the *contract*, not a token inside it — its own
+    // identity (e.g. "USDC" if that's the scanned contract) is what a finder
+    // actually called dibs on, already captured by every scan that wrote
+    // this contract to the leaderboard. Reused here rather than duplicated.
+    supabase
+      .from('salvage_leaderboard')
+      .select('token_name, token_symbol')
+      .eq('chain', find.chain)
+      .eq('contract_address', find.recipient_contract.toLowerCase())
+      .maybeSingle()
+      .then((r: { data: { token_name: string | null; token_symbol: string | null } | null }) => r.data),
+  ])
 
   const overall = tokens.reduce((worst, t) => (
     STATUS_PRIORITY.indexOf(t.claimStatus) < STATUS_PRIORITY.indexOf(worst) ? t.claimStatus : worst
@@ -89,6 +100,8 @@ async function withClaimStatus(
     findKey: find.find_key,
     chain: find.chain,
     recipientContract: find.recipient_contract,
+    contractName: contractInfo?.token_name ?? null,
+    contractSymbol: contractInfo?.token_symbol ?? null,
     victimWallet: find.victim_wallet,
     lossTxHash: find.loss_tx_hash,
     finderAddress: find.finder_address,
