@@ -175,6 +175,10 @@ npx hardhat test
 
 - **✅ True single-transaction batch settlement:** `SalvageBatchWrapper` is a small, additive contract that sits alongside the router — never modifies it, holds no funds, has no admin role — and loops `registerClaim`/`settle` calls into one transaction per batch of up to 20 tokens. Settling needs no signature at all (it never did), so batch settlement is a genuine one-click win. Registering still needs one EIP-712 signature per token — the router verifies each independently and that can't be skipped without the router itself changing — but those are fast, free, off-chain signatures, not separate transactions: "Register All" now means N quick signature prompts followed by *one* transaction confirmation per batch, not N of each. A contract holding more than 20 tokens is chunked into multiple batches automatically. One token failing inside a batch (bad signature, not yet funded) doesn't revert the rest — verified in both the contract's own test suite and live against real deployed contracts before shipping. Deployed and verified on Etherscan, Basescan, Blockscout, and Sourcify on both chains.
 
+### In progress
+
+- **Pre-send warning (Chrome extension):** checks the recipient address on-chain before a transfer is confirmed and warns if it's a contract, not a wallet — the one feature that makes Salvage preventive, not just reactive. Shipping now.
+
 ### Up next
 
 - **In-app rescue execution:** the owner panel already decodes the real rescue function and builds correct calldata (`Copy Raw Calldata`) — the owner still has to broadcast it themselves via Etherscan/Basescan or their own wallet. Once the decode/pre-fill logic has more real-world mileage, add a "Send" button that fires that same calldata directly from Salvage (a plain `sendTransaction` to the stranded contract, no new integration needed) so recovery never requires leaving the app.
@@ -183,6 +187,8 @@ npx hardhat test
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
 - **Proactive re-scanning:** periodically re-check known contracts (not just on-demand) so an owner can be notified the moment something new gets stranded, not only when they happen to revisit.
 - **Public scan API:** let other wallets and explorers check an address for stranded tokens directly, instead of only through this site.
+- **Finder watchlists:** follow a specific contract and get notified the moment a new stranded balance shows up in it — the finder-facing complement to proactive re-scanning, turning one-time scanners into standing trackers. Ships after public launch.
+- **Chain expansion beyond Arc:** Polygon, Arbitrum, Optimism, and other EVM chains with real retail mistaken-send volume — same router logic ports as-is, same shape of work as the Arc rollout. Ships after public launch.
 
 ## Vision
 
