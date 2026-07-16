@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // client-side code running inside an embedded webview (Base App, Farcaster),
 // which is a genuine cross-origin browser request, not a server-to-server one.
 const ALLOWED_ORIGINS = [
-  'https://salvage-miniapp.vercel.app',
+  'https://miniapp.usesalvage.xyz',
+  'https://salvage-miniapp.vercel.app', // legacy domain, still resolves — keep until fully retired
   'http://localhost:3000', // mini app local dev — adjust if it runs elsewhere
 ]
 
