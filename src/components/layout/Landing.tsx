@@ -1,11 +1,39 @@
 'use client'
 
+import { useState } from 'react'
 import SonarLogo from '@/components/ui/SonarLogo'
 
 interface LandingProps {
   onOpenDashboard: () => void
   onOpenLeaderboard: () => void
 }
+
+const FAQ_ITEMS = [
+  {
+    q: 'Does Salvage ever hold my funds?',
+    a: "No. Salvage is non-custodial — recovered tokens flow straight from the stranded contract to a per-claim deposit address, then settle() splits them automatically the moment it's funded. There's no admin key and no path that lets Salvage move funds anywhere else.",
+  },
+  {
+    q: 'What if the contract owner never acts?',
+    a: 'Then nothing happens — and nothing was risked. Registering a claim is one free signed message, no gas, no fee, no deadline. Salvage just guarantees that whenever the owner does act, the split is automatic and trustless.',
+  },
+  {
+    q: 'Is there a fee?',
+    a: 'Only on a successful recovery: 5% to protocol if no finder was involved, or 3% protocol + 7% to the finder if someone registered the find first. Nothing is ever charged upfront — if anyone asks you to pay before funds move, that’s not Salvage.',
+  },
+  {
+    q: 'How is this different from "fund recovery" scams?',
+    a: 'Those work by DMing victims and demanding payment before anything is returned. Salvage never contacts you first, never asks for money, and never takes custody — every contract is verified and public, and every settlement is a transaction you can check yourself.',
+  },
+  {
+    q: 'I found stranded tokens in someone else’s contract — what now?',
+    a: 'Register the find, free and gasless. If the owner later recovers those tokens through Salvage, 7% routes to your wallet automatically the moment they settle — no need to contact them yourself, though Salvage can generate an outreach message if you want to speed it along.',
+  },
+  {
+    q: 'Which chains are supported?',
+    a: 'Ethereum and Base today, with Circle’s Arc mainnet planned shortly after it launches this summer — same router logic, just a new chain config.',
+  },
+]
 
 const PROOF_STEPS = [
   {
@@ -35,6 +63,8 @@ const PROOF_STEPS = [
 ]
 
 export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingProps) {
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+
   return (
     <div id="landing">
       {/* Nav */}
@@ -214,6 +244,34 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
               promising guaranteed fund recovery for an upfront fee, it&apos;s a scam —
               that&apos;s exactly the pattern this protocol was designed to make unnecessary.
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ */}
+      <div className="l-light">
+        <div className="l-light-inner">
+          <div className="section-eyebrow">FAQ</div>
+          <h2 className="section-h2">
+            Questions, <span>answered.</span>
+          </h2>
+          <div className="faq-list">
+            {FAQ_ITEMS.map((item, i) => {
+              const isOpen = openFaq === i
+              return (
+                <div key={item.q} className="faq-item">
+                  <button
+                    className="faq-question"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenFaq(isOpen ? null : i)}
+                  >
+                    <span className="faq-question-text">{item.q}</span>
+                    <span className="faq-icon">{isOpen ? '−' : '+'}</span>
+                  </button>
+                  {isOpen && <div className="faq-answer">{item.a}</div>}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
