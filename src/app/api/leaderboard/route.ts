@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,14 @@ const PAGE_SIZE = 10
 
 export async function GET(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'leaderboard')
+    if (limited) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests — please wait a moment.', data: [], page: 1, totalPages: 1, totalCount: 0 },
+        { status: 429 }
+      )
+    }
+
     const { searchParams } = new URL(req.url)
     const chain = searchParams.get('chain') || 'eth'
     const page  = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
