@@ -177,6 +177,7 @@ npx hardhat test
 
 ### Up next
 
+- **In-app rescue execution:** the owner panel already decodes the real rescue function and builds correct calldata (`Copy Raw Calldata`) — the owner still has to broadcast it themselves via Etherscan/Basescan or their own wallet. Once the decode/pre-fill logic has more real-world mileage, add a "Send" button that fires that same calldata directly from Salvage (a plain `sendTransaction` to the stranded contract, no new integration needed) so recovery never requires leaving the app.
 - **Arc Network support:** Circle's Arc mainnet is expected this summer — Salvage will support it within days of launch. EVM-compatible, so the existing router deploys as-is; just a new chain config and verification pass.
 - **Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath.
 - **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
