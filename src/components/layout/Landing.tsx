@@ -109,7 +109,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
         {/* Hero preview card */}
         <div className="hero-card">
           <div className="hc-bar">
-            <span className="hc-bar-title">Live scan · 0xa0b8…eb48</span>
+            <span className="hc-bar-title">Example scan · 0xa0b8…eb48</span>
             <span className="hc-bar-badge">Ethereum</span>
           </div>
           <div className="hc-row"><span className="hc-label">Token</span><span className="hc-val eth">USD Coin (USDC)</span></div>
@@ -124,7 +124,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
               owner recovers, your 7% routes to your wallet automatically.
             </div>
             <button className="hc-action" onClick={onOpenDashboard}>
-              Register This Find →
+              Try It Yourself →
             </button>
           </div>
         </div>
