@@ -177,7 +177,7 @@ npx hardhat test
 
 ### In progress
 
-- **Pre-send warning (Chrome extension):** checks the recipient address on-chain before a transfer is confirmed and warns if it's a contract, not a wallet — the one feature that makes Salvage preventive, not just reactive. Shipping now.
+- **Pre-send warning (Chrome extension):** checks the recipient address on-chain before a transfer is confirmed and warns if it's a contract, not a wallet — the one feature that makes Salvage preventive, not just reactive. Shipping now. **Known gap:** content scripts can't reach into another extension's own popup UI — a hard Chrome security boundary, not a bug — so this doesn't fire inside MetaMask/Coinbase Wallet/Rabby's native send screens, only on address fields in regular webpages (exchange withdrawal forms, DeFi frontends, block explorers) and Salvage's own toolbar popup (bound to Alt+Shift+S / Cmd+Shift+S for a quick manual check). Closing the wallet-popup gap for real means those wallets integrating a check like this natively — an outreach/partnership effort, not something a third-party extension can build its way around.
 
 ### Up next
 
