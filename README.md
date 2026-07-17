@@ -70,6 +70,11 @@ Paste your wallet address. Salvage scans your transfer history for the classic m
 ### 📱 Base App Mini App
 Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it across **both Ethereum and Base in parallel**, findings labeled by chain. Recovery no longer means leaving the app either: signing the EIP-712 claim, registering it on-chain, and settling once funded all happen natively in the Mini App now — no redirect to the website to finish. Scope is deliberately narrower than the web app: the Contract Scanner and the owner-side recovery panel stay web-only. Built with MiniKit / OnchainKit and `@farcaster/miniapp-sdk`; registered on Base Dashboard. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
 
+### 🧩 Chrome Extension — pre-send warning
+Watches text inputs on any page for a pasted or typed address. If it has contract code on Ethereum or Base, a warning appears before you send — the #1 way tokens get permanently stranded, caught before it happens instead of recovered after. A toolbar popup (`Alt+Shift+S` / `Cmd+Shift+S`) also lets you check an address manually. **Not yet on the Chrome Web Store** (submission pending review) — install it now as an unpacked extension: clone this repo, go to `chrome://extensions`, enable Developer Mode, click **Load unpacked**, and select the [`chrome-extension/`](chrome-extension/) folder. Full install + architecture notes in [`chrome-extension/README.md`](chrome-extension/README.md).
+
+**Known gap:** content scripts can't inject into another extension's own popup UI (a Chrome security boundary, not a bug) — so it doesn't fire inside MetaMask/Coinbase Wallet/Rabby's native send screens, only on address fields in regular webpages and Salvage's own popup. See [Roadmap](#roadmap) for the honest tracking note.
+
 ### 👋 Proactive status on connect
 Connecting a wallet on the web app immediately (and only) surfaces what's actually relevant to it, across all three roles it might play:
 - **Owner** — contracts Salvage has already scanned where you're the on-chain `owner()`
@@ -137,6 +142,7 @@ contracts-hardhat/
   contracts/       SalvageRecoveryRouter.sol, SalvageFeeContract.sol
   test/            router test suite
   ignition/        deployment modules + records (chain-1, chain-8453)
+chrome-extension/  pre-send contract-address warning (unpacked, Web Store pending)
 ```
 
 > The Base App Mini App lives in a separate repo: [`2TheMoom/salvage-miniapp`](https://github.com/2TheMoom/salvage-miniapp)
