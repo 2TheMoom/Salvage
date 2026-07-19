@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isValidAddress } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -125,6 +126,14 @@ const FIND_COLUMNS = 'find_key, chain, token_address, token_symbol, loss_tx_hash
 // nothing keeps finds.status in sync with what actually happened on-chain.
 export async function GET(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'finder-status')
+    if (limited) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests — please wait a moment.', items: [] },
+        { status: 429 }
+      )
+    }
+
     const finder = req.nextUrl.searchParams.get('finder')
     const findKey = req.nextUrl.searchParams.get('findKey')
 

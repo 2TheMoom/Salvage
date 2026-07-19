@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -9,8 +10,16 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'stats')
+    if (limited) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests — please wait a moment.' },
+        { status: 429 }
+      )
+    }
+
     const { data, error } = await supabase
       .from('salvage_leaderboard')
       .select('stranded_value_usd, triage_status, chain')

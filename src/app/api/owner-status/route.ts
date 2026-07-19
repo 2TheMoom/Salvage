@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isValidAddress } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -13,6 +14,14 @@ export const fetchCache = 'force-no-store'
 //     recovery hasn't settled yet
 export async function GET(req: NextRequest) {
   try {
+    const { limited } = await checkRateLimit(req, 'owner-status')
+    if (limited) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests — please wait a moment.', ownedContracts: [], pendingClaims: [] },
+        { status: 429 }
+      )
+    }
+
     const wallet = req.nextUrl.searchParams.get('wallet')
     if (!wallet || !isValidAddress(wallet)) {
       return NextResponse.json({ success: false, error: 'Invalid wallet address' }, { status: 400 })
