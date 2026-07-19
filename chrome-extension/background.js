@@ -8,20 +8,27 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // an address rarely changes contract-ness 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== 'CHECK_ADDRESS' || !msg.address) return false;
 
-  checkAddress(msg.address).then(sendResponse);
+  checkAddress(msg.address)
+    .then(sendResponse)
+    .catch(() => sendResponse({ success: false })); // never leave the caller hanging
   return true; // keep the message channel open for the async response
 });
 
 async function checkAddress(address) {
   const key = address.toLowerCase();
-  const cached = await getCached(key);
-  if (cached) return cached;
+
+  try {
+    const cached = await getCached(key);
+    if (cached) return cached;
+  } catch {
+    // storage unavailable — fall through and check live instead of hanging
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/is-contract?address=${key}`);
     if (!res.ok) return { success: false };
     const data = await res.json();
-    await setCached(key, data);
+    setCached(key, data).catch(() => {}); // best-effort, never blocks the response
     return data;
   } catch {
     return { success: false };
