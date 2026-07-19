@@ -73,6 +73,28 @@ export default function PrivacyPage() {
           </section>
 
           <section className="legal-section">
+            <h2>Chrome extension</h2>
+            <p>
+              The Salvage Chrome extension (&ldquo;Stranded Token Warning&rdquo;) watches text and
+              textarea fields on every page you visit for a pattern that looks like an EVM address
+              (<code>0x</code> followed by 40 hex characters) as you type or paste. It does not read,
+              store, or transmit anything else you type — only a matched address pattern, and only
+              once one appears.
+            </p>
+            <p>
+              When a match is found, the extension sends that address to Salvage&apos;s own{' '}
+              <code>usesalvage.xyz</code> API to check whether it has contract code on Ethereum or
+              Base — the same check the scanner on this site performs. The extension&apos;s{' '}
+              <code>host_permissions</code> are scoped to <code>usesalvage.xyz</code> only, so it
+              cannot send data to, or fetch code from, any other destination. Nothing is sent to
+              third-party analytics, and no browsing history or page content beyond the matched
+              address is ever collected. Address checks may be cached locally in your browser
+              (<code>chrome.storage.session</code>) for up to 10 minutes to avoid redundant checks;
+              this cache is cleared automatically and never leaves your device.
+            </p>
+          </section>
+
+          <section className="legal-section">
             <h2>What we don&apos;t control</h2>
             <p>
               Our hosting and infrastructure providers (Vercel, Alchemy, Etherscan, Supabase) may
