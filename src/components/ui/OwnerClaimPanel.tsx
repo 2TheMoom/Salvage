@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle }
 import {
   useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain,
 } from 'wagmi'
-import { waitForTransactionReceipt } from 'wagmi/actions'
+import { waitForTransactionReceipt, estimateGas } from 'wagmi/actions'
 import { keccak256, encodeAbiParameters, encodeFunctionData, zeroAddress, type Abi } from 'viem'
 import { config } from '@/lib/wagmi'
 import {
@@ -68,6 +68,34 @@ function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
   return out
+}
+
+// Batch wrapper calls (batchRegisterClaims/batchSettle) have highly variable
+// per-item cost — each item is either a cheap no-op (skipped via the
+// wrapper's internal try/catch) or a full CREATE2 deploy + balance check +
+// up to 3 token transfers. A wallet's default estimate/buffer is sized for
+// typical variance, not "every item happens to hit the expensive path" —
+// under-provisioning starves whichever item runs last in the batch. Padding
+// the estimate here (rather than trusting the wallet's default) directly
+// targets that failure mode. Falls back to no override (wallet default) if
+// estimation itself fails, so this can only make gas sizing better, never
+// worse, than what already happens today.
+const BATCH_GAS_BUFFER_BPS = 13_000n // +30%
+
+async function estimateBatchGas(params: {
+  address: `0x${string}`
+  abi: Abi
+  functionName: string
+  args: readonly unknown[]
+  chainId: 1 | 8453
+}): Promise<bigint | undefined> {
+  try {
+    const data = encodeFunctionData({ abi: params.abi, functionName: params.functionName, args: params.args })
+    const estimate = await estimateGas(config, { to: params.address, data, chainId: params.chainId })
+    return (estimate * BATCH_GAS_BUFFER_BPS) / 10_000n
+  } catch {
+    return undefined
+  }
 }
 
 interface OwnerClaimPanelProps {
@@ -198,10 +226,10 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
       }
 
       try {
-        const txHash = await writeContractAsync({
+        const registerArgs = {
           address: wrapperAddress,
           abi: BATCH_WRAPPER_ABI,
-          functionName: 'batchRegisterClaims',
+          functionName: 'batchRegisterClaims' as const,
           args: [
             group.map((t) => t.tokenAddress as `0x${string}`),
             ownerAddress as `0x${string}`,
@@ -209,9 +237,11 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
             lossTxHash,
             deadline,
             signatures,
-          ],
+          ] as const,
           chainId,
-        })
+        }
+        const gas = await estimateBatchGas(registerArgs)
+        const txHash = await writeContractAsync({ ...registerArgs, ...(gas ? { gas } : {}) })
         await waitForTransactionReceipt(config, { hash: txHash, chainId })
 
         for (const token of group) {
@@ -254,13 +284,15 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
       const claimIds = group.map((t) => computeClaimId(t.tokenAddress))
 
       try {
-        const txHash = await writeContractAsync({
+        const settleArgs = {
           address: wrapperAddress,
           abi: BATCH_WRAPPER_ABI,
-          functionName: 'batchSettle',
-          args: [claimIds],
+          functionName: 'batchSettle' as const,
+          args: [claimIds] as const,
           chainId,
-        })
+        }
+        const gas = await estimateBatchGas(settleArgs)
+        const txHash = await writeContractAsync({ ...settleArgs, ...(gas ? { gas } : {}) })
         await waitForTransactionReceipt(config, { hash: txHash, chainId })
 
         for (const token of group) {
