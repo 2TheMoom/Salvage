@@ -51,9 +51,18 @@ async function rpc(rpcUrl: string, method: string, params: unknown[]): Promise<s
   }
 }
 
+// EIP-7702: an EOA that delegates execution to a contract still returns
+// non-empty code from eth_getCode — a 23-byte designator (0xef0100 + the
+// 20-byte implementation address). 0xEF as the first bytecode byte is
+// reserved (EIP-3541) specifically so this can never collide with real
+// deployed bytecode, so it's safe to detect and exclude.
+const DELEGATION_DESIGNATOR_RE = /^0xef0100[a-fA-F0-9]{40}$/i
+
 export async function isContract(address: string, chain: Chain): Promise<boolean> {
   const code = await rpc(getRpcUrl(chain), 'eth_getCode', [address, 'latest'])
-  return !!code && code !== '0x' && code.length > 2
+  if (!code || code === '0x' || code.length <= 2) return false
+  if (DELEGATION_DESIGNATOR_RE.test(code)) return false
+  return true
 }
 
 // Decode a string returned from eth_call — handles both the standard
