@@ -4,6 +4,7 @@
 
 const API_BASE = 'https://www.usesalvage.xyz';
 const CACHE_TTL_MS = 10 * 60 * 1000; // an address rarely changes contract-ness mid-session
+const FETCH_TIMEOUT_MS = 8000; // never let a hung request hold the message channel open indefinitely
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== 'CHECK_ADDRESS' || !msg.address) return false;
@@ -25,7 +26,9 @@ async function checkAddress(address) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/is-contract?address=${key}`);
+    const res = await fetch(`${API_BASE}/api/is-contract?address=${key}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) return { success: false };
     const data = await res.json();
     setCached(key, data).catch(() => {}); // best-effort, never blocks the response
