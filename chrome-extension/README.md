@@ -23,12 +23,29 @@ happens.
 
 ## Loading it locally (unpacked)
 
-1. Go to `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**, select this `chrome-extension/` folder
-4. Visit any page with a text input and paste in a known contract address
+Load unpacked from a plain folder **outside this repo** (e.g. copy
+`chrome-extension/` to `C:\salvage-ext-test` or similar), not from this
+`chrome-extension/` path directly. On at least one dev machine, loading
+unpacked straight from the repo path caused Chrome to intermittently fail
+to fetch the service worker script ("Service worker registration failed.
+Status code: 3"), with the popup taking anywhere from several seconds to
+several minutes to open before the extension was flagged as crashed — root
+cause traced to something blocking Chrome's file access to that specific
+path (not the extension's code; a fresh copy at an unrelated path loaded
+instantly). This is a local dev-environment quirk, not something that
+affects real users once the extension is published — the Chrome Web Store
+copies the packed extension into Chrome's own profile directory, never
+touching a developer's repo path.
+
+1. Copy this `chrome-extension/` folder somewhere outside the repo
+2. Go to `chrome://extensions`
+3. Enable **Developer mode** (top-right toggle)
+4. Click **Load unpacked**, select the copied folder
+5. Visit any page with a text input and paste in a known contract address
    (e.g. USDC's mainnet contract: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`)
    to see the warning fire
+6. After editing source in this repo, re-copy to the loaded folder and
+   click the reload icon on the extension's card in `chrome://extensions`
 
 ## Before publishing to the Chrome Web Store
 
