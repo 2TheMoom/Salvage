@@ -11,6 +11,10 @@ import FinderFindCard, { FinderFind } from '@/components/ui/FinderFindCard'
 
 const PAGE_SIZE = 5
 
+// Matches the app-wide 7% finder-fee approximation (landing page example
+// card, src/lib/outreach.ts's feeUsd) rather than introducing a new one.
+const FINDER_FEE_RATE = 0.07
+
 // A finder's full findings list — the "Welcome back" dashboard card only
 // ever shows a one-line summary (a wall of every active find gets unwieldy
 // fast once someone has several going at once), so this is where the full
@@ -47,6 +51,14 @@ export default function MyFindsPage() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  // Lifetime totals — computed from the full (unpaginated) list already in
+  // memory, so no separate endpoint is needed.
+  const settledFindsCount = finds.filter((f) => f.claimStatus === 'settled_for_you').length
+  const totalEarnedUsd = finds.reduce((sum, f) => sum + f.tokens.reduce(
+    (tSum, t) => tSum + (t.claimStatus === 'settled_for_you' && t.valueUsd != null ? t.valueUsd * FINDER_FEE_RATE : 0),
+    0
+  ), 0)
 
   return (
     <div id="dashboard">
@@ -92,6 +104,21 @@ export default function MyFindsPage() {
         {isConnected && !loading && finds.length === 0 && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-2)' }}>
             No findings registered yet. Scan a contract and register a find to see it here.
+          </div>
+        )}
+
+        {isConnected && !loading && finds.length > 0 && (
+          <div className="e-body" style={{
+            padding: '18px 22px', marginBottom: '22px', borderRadius: '12px',
+            background: 'var(--card)', border: '1px solid var(--border-md)',
+          }}>
+            <div className="e-row"><span className="e-key">Findings registered</span><span className="e-val">{finds.length}</span></div>
+            <div className="e-row"><span className="e-key">Findings settled</span><span className="e-val">{settledFindsCount}</span></div>
+            <div className="e-div" />
+            <div className="e-total">
+              <span className="e-total-key">Total earned</span>
+              <span className="e-total-val">${totalEarnedUsd.toFixed(2)}</span>
+            </div>
           </div>
         )}
 

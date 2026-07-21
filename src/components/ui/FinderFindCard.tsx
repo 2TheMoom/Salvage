@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import ShareReceiptButton from './ShareReceiptButton'
 
 export type FinderClaimStatus =
   | 'pending'
@@ -17,6 +18,7 @@ export interface FinderFindToken {
   claimStatus: FinderClaimStatus
   registerTx: string | null
   settleTx: string | null
+  settledAt: string | null
 }
 
 export interface FinderFind {
@@ -30,7 +32,16 @@ export interface FinderFind {
   claimStatus: FinderClaimStatus
   registerTx: string | null
   settleTx: string | null
+  settledAt: string | null
   tokens: FinderFindToken[]
+}
+
+// 7% finder fee — matches the same approximation used app-wide (the landing
+// page's example card, src/lib/outreach.ts's feeUsd) rather than a new one.
+const FINDER_FEE_RATE = 0.07
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export const FINDER_STATUS_COPY: Record<FinderClaimStatus, { label: string; color: string }> = {
@@ -48,8 +59,13 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
   const [visibleCount, setVisibleCount] = useState(TOKEN_REVEAL_CHUNK)
   const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
   const explorer = find.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
-  const txHash = find.settleTx || find.registerTx
   const multiple = find.tokens.length > 1
+  const earnedUsd = find.claimStatus === 'settled_for_you' && find.valueUsd != null
+    ? find.valueUsd * FINDER_FEE_RATE
+    : null
+  // First token matching the overall status — same "first one that has it"
+  // convention already used for the top-level registerTx/settleTx fields.
+  const settledToken = find.tokens.find((t) => t.claimStatus === 'settled_for_you')
   // The registration is for the scanned CONTRACT, not the tokens found
   // stranded inside it — lead with the contract's own identity.
   const contractLabel = find.contractSymbol || find.contractName || 'Unverified contract'
@@ -69,7 +85,11 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
           <div>
           <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
             Contract found: {contractLabel}
-            {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)} stranded</span>}
+            {earnedUsd != null ? (
+              <span style={{ color: 'var(--green)', fontWeight: 400 }}> · ${earnedUsd.toFixed(2)} earned</span>
+            ) : find.valueUsd != null ? (
+              <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)} stranded</span>
+            ) : null}
             <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · {find.recipientContract.slice(0, 6)}…{find.recipientContract.slice(-4)}</span>
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-2)' }}>
@@ -88,34 +108,62 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: statusCopy.color }}>
             {statusCopy.label}
           </div>
-          {txHash && (
-            <a href={`https://${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
-              View transaction ↗
-            </a>
+          {(find.registerTx || find.settleTx) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+              {find.registerTx && (
+                <a href={`https://${explorer}/tx/${find.registerTx}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                  Registered {formatDate(find.createdAt)} ↗
+                </a>
+              )}
+              {find.settleTx && (
+                <a href={`https://${explorer}/tx/${find.settleTx}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--green)' }}>
+                  Settled{find.settledAt ? ` ${formatDate(find.settledAt)}` : ''} ↗
+                </a>
+              )}
+            </div>
           )}
           </div>
         </div>
-        <Link
-          href={`/find/${encodeURIComponent(find.findKey)}`}
-          style={{
-            padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
-            background: 'var(--eth)', color: '#fff', textDecoration: 'none',
-            fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
-          }}
-        >
-          View Find
-        </Link>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {find.claimStatus === 'registered_for_you' && (
+            <ShareReceiptButton type="find" findKey={find.findKey} />
+          )}
+          {find.claimStatus === 'settled_for_you' && settledToken && (
+            <ShareReceiptButton
+              type="settle" findKey={find.findKey}
+              token={settledToken.tokenAddress} perspective="finder"
+            />
+          )}
+          <Link
+            href={`/find/${encodeURIComponent(find.findKey)}`}
+            style={{
+              padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
+              background: 'var(--eth)', color: '#fff', textDecoration: 'none',
+              fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+            }}
+          >
+            View Find
+          </Link>
+        </div>
       </div>
 
       {multiple && expanded && (
         <div style={{ marginTop: '6px', paddingLeft: '14px', borderLeft: '2px solid var(--border)' }}>
           {find.tokens.slice(0, visibleCount).map((t) => {
             const tCopy = FINDER_STATUS_COPY[t.claimStatus]
+            const tEarned = t.claimStatus === 'settled_for_you' && t.valueUsd != null
+              ? t.valueUsd * FINDER_FEE_RATE
+              : null
             return (
               <div key={t.tokenAddress} style={{ padding: '5px 0', fontFamily: 'var(--font-mono)', fontSize: '0.66rem' }}>
                 <span style={{ color: 'var(--text)', fontWeight: 600 }}>{t.tokenSymbol || 'token'}</span>
-                {t.valueUsd != null && <span style={{ color: 'var(--text-2)' }}> · ${t.valueUsd.toFixed(2)}</span>}
+                {tEarned != null ? (
+                  <span style={{ color: 'var(--green)' }}> · ${tEarned.toFixed(2)} earned</span>
+                ) : t.valueUsd != null ? (
+                  <span style={{ color: 'var(--text-2)' }}> · ${t.valueUsd.toFixed(2)}</span>
+                ) : null}
                 <span style={{ color: tCopy.color }}> · {tCopy.label}</span>
               </div>
             )

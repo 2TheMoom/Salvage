@@ -23,6 +23,7 @@ interface TokenStatus extends StrandedTokenEntry {
   claimStatus: ClaimStatus
   registerTx: string | null
   settleTx: string | null
+  settledAt: string | null
 }
 
 // Priority order for picking one "overall" status to show on the compact
@@ -40,7 +41,7 @@ async function tokenClaimStatus(
 ): Promise<TokenStatus> {
   const { data: claim } = await supabase
     .from('salvage_claims')
-    .select('finder_address, status, register_tx, settle_tx')
+    .select('finder_address, status, register_tx, settle_tx, settled_at')
     .eq('chain', chain)
     .eq('token_address', entry.tokenAddress.toLowerCase())
     .eq('loss_tx_hash', lossTxHash)
@@ -55,7 +56,12 @@ async function tokenClaimStatus(
     claimStatus = claim.status === 'settled' ? 'settled_for_you' : 'registered_for_you'
   }
 
-  return { ...entry, claimStatus, registerTx: claim?.register_tx ?? null, settleTx: claim?.settle_tx ?? null }
+  return {
+    ...entry, claimStatus,
+    registerTx: claim?.register_tx ?? null,
+    settleTx: claim?.settle_tx ?? null,
+    settledAt: claim?.settled_at ?? null,
+  }
 }
 
 async function withClaimStatus(
@@ -114,6 +120,7 @@ async function withClaimStatus(
     // token that actually has one.
     registerTx: tokens.find((t) => t.registerTx)?.registerTx ?? null,
     settleTx: tokens.find((t) => t.settleTx)?.settleTx ?? null,
+    settledAt: tokens.find((t) => t.settledAt)?.settledAt ?? null,
   }
 }
 
