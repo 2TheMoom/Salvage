@@ -8,6 +8,7 @@ import { config } from '@/lib/wagmi'
 import { RECOVERY_ROUTER_ADDRESS, ROUTER_ABI, USDC_ABI } from '@/lib/contracts'
 import { Chain } from '@/types'
 import type { FinderFind, FinderClaimStatus } from '@/components/ui/FinderFindCard'
+import ShareReceiptButton from './ShareReceiptButton'
 
 const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
@@ -122,46 +123,113 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
       ))}
 
       {finderFinds.length > 0 && (
-        <FinderFindsSummary finds={finderFinds} />
+        <FinderFindsSummary finds={finderFinds} wallet={wallet} />
       )}
     </div>
   )
 }
 
+const SEEN_SETTLED_KEY_PREFIX = 'salvage_seen_settled_'
+const FINDER_FEE_RATE = 0.07
+
 // A wall of every active find gets unwieldy fast once a finder has several
 // going at once — the dashboard only ever needs "here's how many still need
 // attention," with the full list living on its own page.
-function FinderFindsSummary({ finds }: { finds: FinderFind[] }) {
+//
+// A finder is usually not online at the moment their find actually settles,
+// so rather than needing a push notification, a newly-settled find gets
+// called out specifically the next time they visit — tracked via a
+// per-wallet localStorage set of findKeys already shown as "new" (simplest
+// option; known limitation is it doesn't sync across devices/browsers).
+function FinderFindsSummary({ finds, wallet }: { finds: FinderFind[]; wallet: string }) {
   const unsettled = finds.filter((f) => !SETTLED_STATUSES.includes(f.claimStatus))
   const needsAttention = finds.filter((f) => NEEDS_ATTENTION_STATUSES.includes(f.claimStatus))
+  const settledForYou = finds.filter((f) => f.claimStatus === 'settled_for_you')
+
+  const storageKey = `${SEEN_SETTLED_KEY_PREFIX}${wallet.toLowerCase()}`
+  // Frozen once per wallet/load — must NOT be recomputed from a "seen" set
+  // that this same effect also mutates, or the highlight would flash and
+  // disappear within the same tick instead of persisting for the visit.
+  const [newlySettled, setNewlySettled] = useState<FinderFind[]>([])
+
+  useEffect(() => {
+    let seenSet: Set<string>
+    try {
+      const raw = localStorage.getItem(storageKey)
+      seenSet = new Set(raw ? JSON.parse(raw) : [])
+    } catch {
+      seenSet = new Set()
+    }
+    const newly = settledForYou.filter((f) => !seenSet.has(f.findKey))
+    setNewlySettled(newly)
+    if (newly.length > 0) {
+      newly.forEach((f) => seenSet.add(f.findKey))
+      try { localStorage.setItem(storageKey, JSON.stringify(Array.from(seenSet))) } catch { /* storage unavailable */ }
+    }
+    // Only re-derive on wallet change, not on every settledForYou identity
+    // change (a mid-visit refetch shouldn't re-trigger the "new" computation
+    // and re-mark things already shown this visit).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey])
 
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '9px 0', gap: '10px',
-    }}>
-      <div>
-        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
-          🔍 {unsettled.length > 0
-            ? `${unsettled.length} active finding${unsettled.length === 1 ? '' : 's'} awaiting settlement`
-            : `All ${finds.length} finding${finds.length === 1 ? '' : 's'} settled`}
-        </div>
-        {needsAttention.length > 0 && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--crimson)' }}>
-            ⚠ {needsAttention.length} may need your attention
+    <div style={{ padding: '9px 0' }}>
+      {newlySettled.length > 0 && (
+        <div style={{
+          marginBottom: '10px', padding: '10px 12px', borderRadius: '8px',
+          background: 'var(--green-soft)', border: '1px solid var(--green-border)',
+        }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--green)', marginBottom: '6px' }}>
+            🎉 {newlySettled.length} new recovery{newlySettled.length === 1 ? '' : 'ies'} settled!
           </div>
-        )}
+          {newlySettled.map((f) => {
+            const settledToken = f.tokens.find((t) => t.claimStatus === 'settled_for_you')
+            const earnedUsd = f.valueUsd != null ? f.valueUsd * FINDER_FEE_RATE : null
+            const contractLabel = f.contractSymbol || f.contractName || 'Unverified contract'
+            return (
+              <div key={f.findKey} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                gap: '10px', padding: '4px 0',
+              }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text)' }}>
+                  {contractLabel}{earnedUsd != null && <span style={{ color: 'var(--green)' }}> · ${earnedUsd.toFixed(2)} earned</span>}
+                </div>
+                {settledToken && (
+                  <ShareReceiptButton
+                    type="settle" findKey={f.findKey}
+                    token={settledToken.tokenAddress} perspective="finder"
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+        <div>
+          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+            🔍 {unsettled.length > 0
+              ? `${unsettled.length} active finding${unsettled.length === 1 ? '' : 's'} awaiting settlement`
+              : `All ${finds.length} finding${finds.length === 1 ? '' : 's'} settled`}
+          </div>
+          {needsAttention.length > 0 && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--crimson)' }}>
+              ⚠ {needsAttention.length} may need your attention
+            </div>
+          )}
+        </div>
+        <Link
+          href="/finds"
+          style={{
+            padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
+            background: 'var(--eth)', color: '#fff', textDecoration: 'none',
+            fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+          }}
+        >
+          View All Findings
+        </Link>
       </div>
-      <Link
-        href="/finds"
-        style={{
-          padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
-          background: 'var(--eth)', color: '#fff', textDecoration: 'none',
-          fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
-        }}
-      >
-        View All Findings
-      </Link>
     </div>
   )
 }
