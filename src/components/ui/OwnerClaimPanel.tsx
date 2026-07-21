@@ -258,6 +258,7 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
               tokenSymbol: token.tokenSymbol,
               valueUsd:    token.valueUsd,
               registerTx:  txHash,
+              recipientContract: contractAddress,
             }),
           }).catch(() => {})
           const handle = rowRefs.current.get(token.tokenAddress)
@@ -627,6 +628,7 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
             tokenSymbol: token.tokenSymbol,
             valueUsd:    token.valueUsd,
             registerTx:  txHash,
+            recipientContract: contractAddress,
           }),
         }))
         .catch(() => {})

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ScanResultCard from '@/components/ui/ScanResultCard'
@@ -676,6 +677,18 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                       <div className="e-total">
                         <span className="e-total-key">Total recovered</span>
                         <span className="e-total-val">{formatUsdShort(userRecovered.total)}</span>
+                      </div>
+                      <div style={{ marginTop: '14px', textAlign: 'right' }}>
+                        <Link
+                          href="/recoveries"
+                          style={{
+                            padding: '7px 12px', borderRadius: '6px', whiteSpace: 'nowrap',
+                            background: 'var(--eth)', color: '#fff', textDecoration: 'none',
+                            fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600,
+                          }}
+                        >
+                          View All Recoveries
+                        </Link>
                       </div>
                     </>
                   )}

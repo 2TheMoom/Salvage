@@ -237,6 +237,7 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
             tokenSymbol: finding.tokenSymbol,
             valueUsd:    finding.valueUsd,
             registerTx:  txHash,
+            recipientContract: finding.recipientContract,
           }),
         }))
         .catch(() => {})

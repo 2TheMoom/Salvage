@@ -51,7 +51,7 @@ function renderCard(params: {
   headline: string
   headlineColor: string
   contractLabel: string
-  contractAddress: string
+  contractAddress?: string
   chain: string
 }) {
   const explorer = params.chain === 'eth' ? 'Ethereum' : 'Base'
@@ -72,7 +72,9 @@ function renderCard(params: {
             {params.contractLabel}
           </div>
           <div style={{ fontSize: 24, color: TEXT_2, marginTop: 8, display: 'flex' }}>
-            {explorer} · {params.contractAddress.slice(0, 6)}…{params.contractAddress.slice(-4)}
+            {params.contractAddress
+              ? `${explorer} · ${params.contractAddress.slice(0, 6)}…${params.contractAddress.slice(-4)}`
+              : explorer}
           </div>
         </div>
         <div style={{
@@ -96,6 +98,7 @@ async function contractLabelFor(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any, chain: string, recipientContract: string
 ): Promise<string> {
+  if (!recipientContract) return 'a stranded contract'
   const { data } = await supabase
     .from('salvage_leaderboard')
     .select('token_name, token_symbol')
@@ -173,8 +176,11 @@ export async function GET(
   } else {
     chain = req.nextUrl.searchParams.get('chain') || ''
     lossTxHash = req.nextUrl.searchParams.get('lossTxHash') || ''
+    // Optional — older claims registered before recipient_contract was
+    // tracked (or victim-initiated ones where it was never sent) just get a
+    // less specific card rather than no card at all.
     recipientContract = req.nextUrl.searchParams.get('recipientContract') || ''
-    if (!chain || !lossTxHash || !recipientContract) return errorCard('Missing claim identity')
+    if (!chain || !lossTxHash) return errorCard('Missing claim identity')
   }
 
   const { data: claim } = await supabase
