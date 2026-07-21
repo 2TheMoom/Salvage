@@ -198,6 +198,7 @@ function FinderFindsSummary({ finds, wallet }: { finds: FinderFind[]; wallet: st
                   <ShareReceiptButton
                     type="settle" findKey={f.findKey}
                     token={settledToken.tokenAddress} perspective="finder"
+                    amountUsd={earnedUsd ?? 0}
                   />
                 )}
               </div>

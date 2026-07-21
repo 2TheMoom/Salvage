@@ -416,6 +416,7 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
               type="settle" perspective="victim"
               chain={chain} token={finding.tokenAddress}
               lossTxHash={finding.txHash} recipientContract={finding.recipientContract}
+              amountUsd={finding.valueUsd * (hasFinder ? 0.90 : 0.95)}
             />
           </div>
         </div>

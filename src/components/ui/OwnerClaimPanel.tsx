@@ -730,6 +730,7 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
               type="settle" perspective="victim"
               chain={chain} token={token.tokenAddress}
               lossTxHash={lossTxHash} recipientContract={contractAddress}
+              amountUsd={token.valueUsd * (hasFinder ? 0.90 : 0.95)}
             />
           </div>
         </div>

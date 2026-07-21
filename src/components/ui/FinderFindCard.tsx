@@ -134,12 +134,13 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
               not-yet-settled states; only the without_you statuses mean this
               finder isn't the one who'll actually get paid. */}
           {(find.claimStatus === 'pending' || find.claimStatus === 'registered_for_you') && (
-            <ShareReceiptButton type="find" findKey={find.findKey} />
+            <ShareReceiptButton type="find" findKey={find.findKey} amountUsd={find.valueUsd ?? 0} />
           )}
           {find.claimStatus === 'settled_for_you' && settledToken && (
             <ShareReceiptButton
               type="settle" findKey={find.findKey}
               token={settledToken.tokenAddress} perspective="finder"
+              amountUsd={earnedUsd ?? 0}
             />
           )}
           <Link
