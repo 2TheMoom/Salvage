@@ -127,7 +127,13 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          {find.claimStatus === 'registered_for_you' && (
+          {/* Every row here already represents a registered find (that's what
+              populates this list) — "pending" just means no on-chain claim
+              exists yet, not that the find itself isn't registered. Both
+              "pending" and "registered_for_you" are the finder's own credited,
+              not-yet-settled states; only the without_you statuses mean this
+              finder isn't the one who'll actually get paid. */}
+          {(find.claimStatus === 'pending' || find.claimStatus === 'registered_for_you') && (
             <ShareReceiptButton type="find" findKey={find.findKey} />
           )}
           {find.claimStatus === 'settled_for_you' && settledToken && (
