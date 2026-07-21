@@ -13,6 +13,7 @@ import {
   routerDomain, USDC_ABI,
 } from '@/lib/contracts'
 import { VictimFinding, Chain } from '@/types'
+import ShareReceiptButton from './ShareReceiptButton'
 
 const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
 
@@ -409,6 +410,13 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
             {hasFinder
               ? '90% routed to the victim, 7% to the finder, 3% to the protocol. Nothing further to do.'
               : '95% routed to the victim, 5% to the protocol. Nothing further to do.'}
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <ShareReceiptButton
+              type="settle" perspective="victim"
+              chain={chain} token={finding.tokenAddress}
+              lossTxHash={finding.txHash} recipientContract={finding.recipientContract}
+            />
           </div>
         </div>
       )}

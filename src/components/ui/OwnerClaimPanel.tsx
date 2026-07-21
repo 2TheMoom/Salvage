@@ -13,6 +13,7 @@ import {
   routerDomain, USDC_ABI, contractScanLossTxHash,
 } from '@/lib/contracts'
 import { Chain, StrandedToken, RescueAbiEntry } from '@/types'
+import ShareReceiptButton from './ShareReceiptButton'
 
 // Maps a rescue function's real ABI inputs to known values by name + type
 // heuristics — never a guess about what the contract *does*, only about
@@ -723,7 +724,14 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
 
       {isSettled ? (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--green)' }}>
-          ✓ Settled on-chain.
+          <div>✓ Settled on-chain.</div>
+          <div style={{ marginTop: '6px' }}>
+            <ShareReceiptButton
+              type="settle" perspective="victim"
+              chain={chain} token={token.tokenAddress}
+              lossTxHash={lossTxHash} recipientContract={contractAddress}
+            />
+          </div>
         </div>
       ) : isRegistered ? (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--text-2)', lineHeight: 1.7 }}>
