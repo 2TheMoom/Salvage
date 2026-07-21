@@ -612,6 +612,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                       onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}
                       title={item.txHash ? 'View transaction' : undefined}
                     >
+                      <div className="lb-rank">{i + 1}</div>
                       <div className="lb-rank" style={{
                         background: item.type === 'claim_settled' ? 'var(--green-soft)' : 'var(--eth-soft)',
                         color: item.type === 'claim_settled' ? 'var(--green)' : 'var(--eth)',

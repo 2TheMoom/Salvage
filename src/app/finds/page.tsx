@@ -6,7 +6,10 @@ import { useAccount } from 'wagmi'
 import SonarLogo from '@/components/ui/SonarLogo'
 import ConnectButton from '@/components/ui/ConnectButton'
 import BackLink from '@/components/ui/BackLink'
+import PageNav from '@/components/ui/PageNav'
 import FinderFindCard, { FinderFind } from '@/components/ui/FinderFindCard'
+
+const PAGE_SIZE = 5
 
 // A finder's full findings list — the "Welcome back" dashboard card only
 // ever shows a one-line summary (a wall of every active find gets unwieldy
@@ -18,6 +21,7 @@ export default function MyFindsPage() {
   const { address, isConnected } = useAccount()
   const [finds, setFinds]     = useState<FinderFind[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage]       = useState(1)
 
   useEffect(() => {
     if (!isConnected || !address) { setLoading(false); return }
@@ -29,6 +33,8 @@ export default function MyFindsPage() {
       .finally(() => setLoading(false))
   }, [address, isConnected])
 
+  useEffect(() => { setPage(1) }, [address])
+
   // Unsettled first (that's the actionable stuff), then settled — rather
   // than strict chronological, so a finder isn't hunting through old
   // completed finds to see what still needs attention.
@@ -38,6 +44,9 @@ export default function MyFindsPage() {
     if (aDone !== bDone) return aDone ? 1 : -1
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div id="dashboard">
@@ -91,9 +100,10 @@ export default function MyFindsPage() {
             padding: '4px 18px', borderRadius: '12px',
             background: 'var(--card)', border: '1px solid var(--border-md)',
           }}>
-            {sorted.map((find) => (
-              <FinderFindCard key={find.findKey} find={find} />
+            {paged.map((find, i) => (
+              <FinderFindCard key={find.findKey} find={find} index={i} />
             ))}
+            <PageNav page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
       </div>

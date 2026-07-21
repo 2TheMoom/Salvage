@@ -43,7 +43,7 @@ export const FINDER_STATUS_COPY: Record<FinderClaimStatus, { label: string; colo
 
 const TOKEN_REVEAL_CHUNK = 10
 
-export default function FinderFindCard({ find }: { find: FinderFind }) {
+export default function FinderFindCard({ find, index }: { find: FinderFind; index?: number }) {
   const [expanded, setExpanded]       = useState(false)
   const [visibleCount, setVisibleCount] = useState(TOKEN_REVEAL_CHUNK)
   const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
@@ -57,7 +57,16 @@ export default function FinderFindCard({ find }: { find: FinderFind }) {
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-        <div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {index != null && (
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.63rem', color: 'var(--text-3)',
+              width: '14px', textAlign: 'right', flexShrink: 0, paddingTop: '2px',
+            }}>
+              {index + 1}
+            </div>
+          )}
+          <div>
           <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
             Contract found: {contractLabel}
             {find.valueUsd != null && <span style={{ color: 'var(--text-2)', fontWeight: 400 }}> · ${find.valueUsd.toFixed(2)} stranded</span>}
@@ -85,6 +94,7 @@ export default function FinderFindCard({ find }: { find: FinderFind }) {
               View transaction ↗
             </a>
           )}
+          </div>
         </div>
         <Link
           href={`/find/${encodeURIComponent(find.findKey)}`}
