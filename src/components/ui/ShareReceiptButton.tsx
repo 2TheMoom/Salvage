@@ -33,7 +33,11 @@ export default function ShareReceiptButton({
   if (recipientContract) params.set('recipientContract', recipientContract)
   if (token) params.set('token', token)
   if (perspective) params.set('perspective', perspective)
-  const path = `/api/receipt/${type}?${params.toString()}`
+  // Points at the /receipt preview PAGE (not the raw /api/receipt image) —
+  // a page unfurls into a rich card wherever it's shared (OG image) and
+  // gives a visible result when opened directly, unlike a bare image URL
+  // that some share targets/browsers handle unpredictably.
+  const path = `/receipt/${type}?${params.toString()}`
 
   const handleShare = async () => {
     const url = `${window.location.origin}${path}`
@@ -42,14 +46,17 @@ export default function ShareReceiptButton({
         await navigator.share({ url, title: 'Salvage' })
         return
       } catch {
-        // user cancelled the share sheet, or share failed — fall through to clipboard
+        // user cancelled the share sheet, or share failed — fall through
       }
     }
+    // No native share sheet (typical on desktop) — open the visual card
+    // directly so clicking always shows something, and copy the link too.
+    window.open(url, '_blank', 'noopener,noreferrer')
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch { /* clipboard unavailable */ }
+    } catch { /* clipboard unavailable — opening the tab is feedback enough */ }
   }
 
   return (
