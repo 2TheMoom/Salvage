@@ -330,7 +330,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
           </div>
         </div>
         <div className="l-footer-right">
-          <a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a>
+          <a href="/docs">Docs</a>
           <span style={{ color: 'rgba(255,255,255,0.22)' }}>
             Router:{' '}
             <a href="https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code" target="_blank" rel="noopener noreferrer">ETH</a>

@@ -357,7 +357,23 @@ body {
 .legal-section ul { padding-left: 20px; margin-bottom: 10px; }
 .legal-section li { font-size: 0.9rem; line-height: 1.75; color: var(--text-2); margin-bottom: 8px; }
 .legal-section strong { color: var(--text); }
-.legal-container a { color: var(--eth); }
+.legal-container a { color: var(--eth); text-decoration: none; transition: color 0.15s; }
+.legal-container a:hover { text-decoration: underline; }
+
+/* ── DOCS CHIPS (TOC, contract addresses, support links) ── */
+.docs-label {
+  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 12px;
+}
+.docs-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.legal-container a.docs-chip {
+  display: inline-block;
+  font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600;
+  padding: 6px 13px; border-radius: 20px;
+  border: 1px solid var(--border-md); background: var(--card-inner);
+  color: var(--text-2); text-decoration: none; transition: all 0.15s;
+}
+.legal-container a.docs-chip:hover { border-color: var(--eth-border); background: var(--eth-soft); color: var(--eth); text-decoration: none; }
 
 /* ── DASHBOARD ── */
 #dashboard { background: var(--bg); color: var(--text); min-height: 100vh; }

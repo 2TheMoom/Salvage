@@ -277,7 +277,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
         <ul className="d-nav-links">
           <li><a href="#" className="on" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Scanner</a></li>
           <li><a href="#leaderboard" onClick={(e) => { e.preventDefault(); setSidebarTab('leaderboard'); document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' }) }}>Leaderboard</a></li>
-          <li><a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer">Docs</a></li>
+          <li><a href="/docs">Docs</a></li>
         </ul>
         <div className="d-nav-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <ChainSwitcher />
