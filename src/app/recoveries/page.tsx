@@ -165,8 +165,8 @@ function RecoveryRow({ claim, index }: { claim: Claim; index: number }) {
               <span style={{ color: 'var(--green)', fontWeight: 400 }}> · ${payout.toFixed(2)} recovered</span>
             </div>
             {claim.settle_tx && (
-              <a href={`https://${explorer}/tx/${claim.settle_tx}`} target="_blank" rel="noopener noreferrer"
-                style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--green)' }}>
+              <a className="chip-link settled" href={`https://${explorer}/tx/${claim.settle_tx}`} target="_blank" rel="noopener noreferrer"
+                style={{ marginTop: '4px' }}>
                 Settled{claim.settled_at ? ` ${formatDate(claim.settled_at)}` : ''} ↗
               </a>
             )}

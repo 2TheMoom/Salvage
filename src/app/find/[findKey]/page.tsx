@@ -84,9 +84,9 @@ function TokenRow({ token, chain }: { token: TokenDetail; chain: string }) {
         </span>
         {(token.settleTx || token.registerTx) && (
           <a
+            className={`chip-link${token.settleTx ? ' settled' : ''}`}
             href={`https://${explorer}/tx/${token.settleTx || token.registerTx}`}
             target="_blank" rel="noopener noreferrer"
-            style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--eth)' }}
           >
             tx ↗
           </a>
@@ -224,7 +224,7 @@ export default function FindDetailPage() {
             }}>
               <div>
                 Contract:{' '}
-                <a href={`https://${explorer}/address/${find.recipientContract}#code`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--eth)' }}>
+                <a className="chip-link" href={`https://${explorer}/address/${find.recipientContract}#code`} target="_blank" rel="noopener noreferrer">
                   {truncateAddress(find.recipientContract)} ↗
                 </a>
               </div>

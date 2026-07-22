@@ -331,8 +331,8 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
         )}
       </div>
       {settleTx && (
-        <a href={`https://${explorer}/tx/${settleTx}`} target="_blank" rel="noopener noreferrer"
-          style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+        <a className="chip-link settled" href={`https://${explorer}/tx/${settleTx}`} target="_blank" rel="noopener noreferrer"
+          style={{ marginTop: '4px' }}>
           Settlement tx ↗
         </a>
       )}

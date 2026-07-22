@@ -94,15 +94,7 @@ export default function ShareReceiptButton({
 
   return (
     <>
-      <button
-        onClick={handleOpen}
-        style={{
-          padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border)',
-          background: 'var(--card)', color: 'var(--text)', cursor: 'pointer',
-          fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
-          whiteSpace: 'nowrap',
-        }}
-      >
+      <button className="chip-btn" onClick={handleOpen}>
         {label || '↗ Share'}
       </button>
 

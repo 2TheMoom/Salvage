@@ -467,16 +467,14 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
       {(registerTx || settleTx) && (
         <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
           {registerTx && (
-            <a href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
-               target="_blank" rel="noopener noreferrer"
-               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--eth)' }}>
+            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
+               target="_blank" rel="noopener noreferrer">
               Registration tx ↗
             </a>
           )}
           {settleTx && (
-            <a href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${settleTx}`}
-               target="_blank" rel="noopener noreferrer"
-               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--eth)' }}>
+            <a className="chip-link settled" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${settleTx}`}
+               target="_blank" rel="noopener noreferrer">
               Settlement tx ↗
             </a>
           )}

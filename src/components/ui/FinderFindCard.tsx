@@ -109,16 +109,14 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
             {statusCopy.label}
           </div>
           {(find.registerTx || find.settleTx) && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
               {find.registerTx && (
-                <a href={`https://${explorer}/tx/${find.registerTx}`} target="_blank" rel="noopener noreferrer"
-                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                <a className="chip-link" href={`https://${explorer}/tx/${find.registerTx}`} target="_blank" rel="noopener noreferrer">
                   Registered {formatDate(find.createdAt)} ↗
                 </a>
               )}
               {find.settleTx && (
-                <a href={`https://${explorer}/tx/${find.settleTx}`} target="_blank" rel="noopener noreferrer"
-                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--green)' }}>
+                <a className="chip-link settled" href={`https://${explorer}/tx/${find.settleTx}`} target="_blank" rel="noopener noreferrer">
                   Settled{find.settledAt ? ` ${formatDate(find.settledAt)}` : ''} ↗
                 </a>
               )}

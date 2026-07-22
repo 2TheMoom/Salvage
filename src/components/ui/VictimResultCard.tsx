@@ -296,9 +296,8 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
                   color: 'var(--green)',
                 }}>✓ Settled</span>
                 {c.settle_tx && (
-                  <a href={explorerTxUrl(c.settle_tx, result.chain)}
-                     target="_blank" rel="noopener noreferrer"
-                     style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--eth)' }}>
+                  <a className="chip-link settled" href={explorerTxUrl(c.settle_tx, result.chain)}
+                     target="_blank" rel="noopener noreferrer">
                     tx ↗
                   </a>
                 )}

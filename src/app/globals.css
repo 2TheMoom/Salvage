@@ -446,6 +446,34 @@ body {
 .r-name { font-size: 0.96rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .r-addr { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 0.67rem; color: var(--text-2); }
 .chain-pill { font-family: var(--font-mono); font-size: 0.58rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: var(--eth-soft); color: var(--eth); border: 1px solid var(--eth-border); }
+
+/* ── TX/REFERENCE LINK CHIPS (tx + contract explorer links across claim/find cards) ── */
+.chip-link {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600;
+  padding: 3px 9px; border-radius: 12px;
+  border: 1px solid var(--eth-border); background: var(--eth-soft); color: var(--eth);
+  text-decoration: none; transition: all 0.15s;
+}
+.chip-link:hover { background: var(--eth); color: #fff; border-color: var(--eth); }
+.chip-link.settled { border-color: rgba(26,107,60,0.22); background: rgba(26,107,60,0.09); color: var(--green); }
+.chip-link.settled:hover { background: var(--green); color: #fff; border-color: var(--green); }
+/* Neutral variant for action triggers (e.g. Share) rather than colored references */
+.chip-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600;
+  padding: 5px 11px; border-radius: 12px; white-space: nowrap;
+  border: 1px solid var(--border-md); background: var(--card);
+  color: var(--text); cursor: pointer; transition: all 0.15s;
+}
+.chip-btn:hover { border-color: var(--eth-border); background: var(--eth-soft); color: var(--eth); }
+/* Dark-background variant (landing nav/footer/hero) — same eth hover accent,
+   neutral base swapped for the translucent-white palette already used by
+   .wallet-chip on the same dark surfaces. */
+.chip-link.on-dark {
+  border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
+}
+.chip-link.on-dark:hover { background: var(--eth); color: #fff; border-color: var(--eth); }
 .s-badge { font-family: var(--font-body); font-size: 0.72rem; font-weight: 600; padding: 6px 14px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
 .s-ok   { background: var(--green-soft);   color: var(--green);   border: 1px solid var(--green-border);   }
 .s-act  { background: var(--amber-soft);   color: var(--amber);   border: 1px solid var(--amber-border);   }

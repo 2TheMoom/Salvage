@@ -331,11 +331,10 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
         </div>
         <div className="l-footer-right">
           <a href="/docs">Docs</a>
-          <span style={{ color: 'rgba(255,255,255,0.22)' }}>
-            Router:{' '}
-            <a href="https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code" target="_blank" rel="noopener noreferrer">ETH</a>
-            {' · '}
-            <a href="https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code" target="_blank" rel="noopener noreferrer">Base</a>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: 'rgba(255,255,255,0.22)' }}>Router:</span>
+            <a className="chip-link on-dark" href="https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code" target="_blank" rel="noopener noreferrer">ETH ↗</a>
+            <a className="chip-link on-dark" href="https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code" target="_blank" rel="noopener noreferrer">Base ↗</a>
           </span>
           <a href="/privacy">Privacy</a>
           <span className="credit">
