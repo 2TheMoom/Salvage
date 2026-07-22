@@ -73,18 +73,21 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const victim = req.nextUrl.searchParams.get('victim')
+    if (!victim) {
+      return corsJson(req, { success: false, error: 'Missing victim address' }, { status: 400 })
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
-    let query = supabase
+    const { data, error } = await supabase
       .from('salvage_claims')
       .select('*')
+      .eq('victim_address', victim.toLowerCase())
       .order('created_at', { ascending: false })
       .limit(50)
-    if (victim) query = query.eq('victim_address', victim.toLowerCase())
 
-    const { data, error } = await query
     if (error) throw error
     return corsJson(req, { success: true, claims: data })
   } catch (err) {
