@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,6 +115,12 @@ export async function GET(
 ) {
   const { type } = await params
   if (type !== 'find' && type !== 'settle') return errorCard('Unknown receipt type')
+
+  // The one image-generating route with no limit until now — exactly the
+  // kind of URL that gets hit repeatedly by social-preview crawlers once
+  // recovery receipts are being shared publicly.
+  const { limited } = await checkRateLimit(req, 'receipt')
+  if (limited) return errorCard('Too many requests — please wait a moment.')
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

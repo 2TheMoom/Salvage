@@ -336,6 +336,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
             <a className="chip-link on-dark" href="https://etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25#code" target="_blank" rel="noopener noreferrer">ETH ↗</a>
             <a className="chip-link on-dark" href="https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code" target="_blank" rel="noopener noreferrer">Base ↗</a>
           </span>
+          <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
           <span className="credit">
             Built by{' '}

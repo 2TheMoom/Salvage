@@ -172,6 +172,7 @@ export default function PrivacyPage() {
           <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
         </div>
         <div className="l-footer-right">
+          <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <span className="credit">
             Built by{' '}

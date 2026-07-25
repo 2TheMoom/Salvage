@@ -395,6 +395,7 @@ export default function DocsPage() {
         </div>
         <div className="l-footer-right">
           <Link href="/docs">Docs</Link>
+          <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <span className="credit">
             Built by{' '}

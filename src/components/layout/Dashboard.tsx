@@ -714,6 +714,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
           Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2
         </div>
         <div className="d-footer-r">
+          <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
           <a
             href="https://x.com/Salvage_xyz"
