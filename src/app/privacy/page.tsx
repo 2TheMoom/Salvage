@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <p>
             Salvage (&ldquo;Salvage&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is a non-custodial
             recovery protocol for stranded ERC-20 tokens. This page explains what data the app at{' '}
-            <a href="https://usesalvage.xyz">usesalvage.xyz</a> and the Base App Mini App collect,
+            <a className="docs-chip" href="https://usesalvage.xyz">usesalvage.xyz</a> and the Base App Mini App collect,
             why, and who it&apos;s shared with. We built Salvage to need as little data as possible
             to work — most of what it touches is already public on-chain.
           </p>
@@ -161,7 +161,7 @@ export default function PrivacyPage() {
           <section className="legal-section">
             <h2>Contact</h2>
             <p>
-              Questions about this policy or your data: <a href="mailto:gethelp.salvage@gmail.com">gethelp.salvage@gmail.com</a>.
+              Questions about this policy or your data: <a className="docs-chip" href="mailto:gethelp.salvage@gmail.com">gethelp.salvage@gmail.com</a>.
             </p>
           </section>
         </div>

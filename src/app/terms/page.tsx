@@ -31,7 +31,7 @@ export default function TermsPage() {
           <p>
             Salvage (&ldquo;Salvage&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates a scanner and a
             non-custodial settlement protocol for ERC-20 tokens stranded in smart contracts, at{' '}
-            <a href="https://usesalvage.xyz">usesalvage.xyz</a> and the Base App Mini App. By connecting a
+            <a className="docs-chip" href="https://usesalvage.xyz">usesalvage.xyz</a> and the Base App Mini App. By connecting a
             wallet, registering a find, registering a claim, or otherwise using Salvage, you agree to these
             terms. If you don&apos;t agree, don&apos;t use the app.
           </p>
@@ -141,7 +141,7 @@ export default function TermsPage() {
             <h2>Contact</h2>
             <p>
               Questions about these terms, or something to report:{' '}
-              <a href="mailto:gethelp.salvage@gmail.com">gethelp.salvage@gmail.com</a>.
+              <a className="docs-chip" href="mailto:gethelp.salvage@gmail.com">gethelp.salvage@gmail.com</a>.
             </p>
           </section>
         </div>
