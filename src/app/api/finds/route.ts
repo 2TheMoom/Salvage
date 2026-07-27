@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { verifyMessage } from 'viem'
 import { notifyVictimOfClaim } from '@/lib/notify'
 import { corsJson, corsPreflight } from '@/lib/cors'
 import { checkRateLimit } from '@/lib/ratelimit'
+import { getServerPublicClient } from '@/lib/contracts'
+import { Chain } from '@/types'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -52,12 +53,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verify the finder actually signed the agreement
-    const valid = await verifyMessage({
-      address: finderAddress as `0x${string}`,
-      message,
-      signature: signature as `0x${string}`,
-    })
+    // Verify the finder actually signed the agreement. Client-bound
+    // verifyMessage (not the plain viem export, which only supports EOAs)
+    // so this also works for finders connected via a smart contract wallet
+    // (Coinbase Smart Wallet, Safe, etc.) via ERC-6492/1271 — plain ECDSA
+    // recovery alone would reject those with a false "Invalid signature."
+    let valid = false
+    try {
+      valid = await getServerPublicClient(chain as Chain).verifyMessage({
+        address: finderAddress as `0x${string}`,
+        message,
+        signature: signature as `0x${string}`,
+      })
+    } catch {
+      valid = false
+    }
     if (!valid) {
       return corsJson(req, { success: false, error: 'Invalid signature' }, { status: 401 })
     }

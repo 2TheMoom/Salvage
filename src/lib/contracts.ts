@@ -296,7 +296,7 @@ const CLAIM_RPC_URL: Record<Chain, string | undefined> = {
   base: process.env.ALCHEMY_BASE_RPC,
 }
 
-function getServerPublicClient(chain: Chain) {
+export function getServerPublicClient(chain: Chain) {
   return createPublicClient({
     chain: chain === 'eth' ? mainnet : base,
     transport: http(CLAIM_RPC_URL[chain]),
