@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Salvage — Stranded Token Warning",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Warns you before sending ERC-20 tokens to a contract address instead of a wallet — the #1 way tokens get permanently stranded.",
   "icons": {
     "16": "icons/icon16.png",

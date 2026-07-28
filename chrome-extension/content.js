@@ -88,12 +88,19 @@ function showWarning(el, result) {
         color: inherit; font-size: 15px; line-height: 1; padding: 0 0 0 8px;
       }
       .close:hover { opacity: 1; }
-      a { color: #ffb864; text-decoration: underline; }
+      a.check-link {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 8px; padding: 3px 10px; border-radius: 12px;
+        background: rgba(217,119,6,0.15); border: 1px solid rgba(217,119,6,0.4);
+        color: #ffb864; font-weight: 600; text-decoration: none;
+        transition: all 0.15s;
+      }
+      a.check-link:hover { background: #d97706; color: #1a1410; }
     </style>
     <div class="bubble">
       <div class="title">⚠️ Contract address, not a wallet<button class="close" title="Dismiss">×</button></div>
       <div>This address has contract code on ${chains}. Sending ERC-20 tokens here may strand them permanently instead of reaching a wallet.</div>
-      <div style="margin-top:6px;"><a href="https://www.usesalvage.xyz" target="_blank" rel="noopener">Check it on Salvage →</a></div>
+      <a class="check-link" href="https://www.usesalvage.xyz" target="_blank" rel="noopener">Check it on Salvage →</a>
     </div>
   `;
 

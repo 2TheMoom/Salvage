@@ -3,11 +3,20 @@
 <head>
 <meta charset="utf-8" />
 <style>
+  /* Desktop Chrome auto-sizes the popup window to the document's natural
+     size, so min-height:100% resolves to just the content's own height
+     there (no established viewport to be a percentage of yet) — this only
+     actually does something on hosts that render the popup as a full-size
+     panel instead (seen on mobile/Kiwi Browser), where it centers the
+     content instead of leaving it pinned to the top-left of empty space. */
+  html { height: 100%; }
   body {
-    width: 280px; margin: 0; padding: 16px;
+    min-height: 100%; margin: 0; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: #0f0f11; color: #f2f2f2;
   }
+  .popup-content { width: 280px; padding: 16px; box-sizing: border-box; }
   h1 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
   h1 img { width: 20px; height: 20px; }
   input {
@@ -23,9 +32,11 @@
 </style>
 </head>
 <body>
-  <h1><img src="icons/icon48.png" alt="" />Salvage</h1>
-  <input id="address" type="text" placeholder="Paste an address to check…" autofocus />
-  <div id="result" class="muted">Checks if it's a wallet or a contract.</div>
+  <div class="popup-content">
+    <h1><img src="icons/icon48.png" alt="" />Salvage</h1>
+    <input id="address" type="text" placeholder="Paste an address to check…" autofocus />
+    <div id="result" class="muted">Checks if it's a wallet or a contract.</div>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
