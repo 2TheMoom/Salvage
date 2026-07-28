@@ -210,6 +210,13 @@ export const ROUTER_ABI = [
     outputs: [{ name: '', type: 'address' }],
   },
   {
+    name: 'protocolFeeRecipient',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
     name: 'settle',
     type: 'function',
     stateMutability: 'nonpayable',
@@ -300,6 +307,18 @@ export function getServerPublicClient(chain: Chain) {
   return createPublicClient({
     chain: chain === 'eth' ? mainnet : base,
     transport: http(CLAIM_RPC_URL[chain]),
+  })
+}
+
+// Read live rather than hardcoded — protocolFeeRecipient is mutable via
+// setProtocolFeeRecipient(), so a cached/hardcoded address could silently
+// go stale if it's ever changed.
+export async function getProtocolFeeRecipient(chain: Chain): Promise<`0x${string}`> {
+  const client = getServerPublicClient(chain)
+  return client.readContract({
+    address: RECOVERY_ROUTER_ADDRESS[CHAIN_ID[chain]],
+    abi: ROUTER_ABI,
+    functionName: 'protocolFeeRecipient',
   })
 }
 

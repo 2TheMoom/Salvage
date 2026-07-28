@@ -30,6 +30,10 @@ const FAQ_ITEMS = [
     a: 'Register the find, free and gasless. If the owner later recovers those tokens through Salvage, 7% routes to your wallet automatically the moment they settle — no need to contact them yourself, though Salvage can generate an outreach message if you want to speed it along.',
   },
   {
+    q: 'What if my wallet is blacklisted by USDC or USDT?',
+    a: 'Salvage checks this before settlement is ever offered: if the victim, finder, or protocol address is blacklisted by that token’s own issuer, settling would revert and permanently strand the funds, so the Settle button simply won’t appear until that’s resolved — better than risking a stuck claim.',
+  },
+  {
     q: 'Which chains are supported?',
     a: 'Ethereum and Base today, with Circle’s Arc mainnet planned shortly after it launches this summer — same router logic, just a new chain config.',
   },

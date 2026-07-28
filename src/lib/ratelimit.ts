@@ -27,6 +27,12 @@ const limiter = redis
     })
   : null
 
+// Trusting the first x-forwarded-for value is only safe because Vercel's
+// edge overwrites this header entirely rather than appending to whatever
+// the client sent — a spoofed value can't survive to reach this code. If
+// another proxy/CDN (e.g. Cloudflare) is ever added in front of Vercel
+// without reconciling which one writes this header last, it becomes
+// spoofable again and this key stops being trustworthy.
 function clientIp(req: NextRequest): string {
   const forwarded = req.headers.get('x-forwarded-for')
   return forwarded?.split(',')[0]?.trim() || 'unknown'

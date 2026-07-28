@@ -157,14 +157,14 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
   // stranded token never needs this (the per-row buttons already cover it),
   // so the batch controls only appear once there's actually more than one
   // token to walk through.
-  const [rowStatus, setRowStatus] = useState<Record<string, { state: RowState; funded: boolean }>>({})
+  const [rowStatus, setRowStatus] = useState<Record<string, { state: RowState; funded: boolean; blacklisted: boolean }>>({})
   const rowRefs = useRef<Map<string, RowHandle>>(new Map())
   const [batchRunning, setBatchRunning]   = useState<'register' | 'settle' | null>(null)
   const [batchProgress, setBatchProgress] = useState(0)
   const [batchChunkInfo, setBatchChunkInfo] = useState<{ current: number; total: number } | null>(null)
 
-  const handleStatusChange = (tokenAddress: string, state: RowState, funded: boolean) => {
-    setRowStatus((prev) => ({ ...prev, [tokenAddress]: { state, funded } }))
+  const handleStatusChange = (tokenAddress: string, state: RowState, funded: boolean, blacklisted: boolean) => {
+    setRowStatus((prev) => ({ ...prev, [tokenAddress]: { state, funded, blacklisted } }))
   }
 
   if (!isOwner || tokens.length === 0) return null
@@ -175,9 +175,16 @@ export default function OwnerClaimPanel({ contractAddress, chain, ownerAddress, 
     const s = rowStatus[t.tokenAddress]?.state
     return !s || s === 'idle' || s === 'error'
   })
+  // Excludes known-blacklisted-recipient tokens — not because the batch
+  // itself is at risk (SalvageBatchWrapper.batchSettle wraps each claim's
+  // settle() in its own try/catch, so one doomed claim can't revert the
+  // rest of the batch), but there's no reason to spend gas on a call that's
+  // certain to fail. The single-claim per-row Settle button below is the
+  // one that actually needs the guard — a direct settle() call has no such
+  // isolation, so a blacklisted recipient there reverts and strands funds.
   const readyToSettle = tokens.filter((t) => {
     const s = rowStatus[t.tokenAddress]
-    return s?.state === 'registered' && s.funded
+    return s?.state === 'registered' && s.funded && !s.blacklisted
   })
   const allSettled = tokens.length > 1
     && tokens.every((t) => rowStatus[t.tokenAddress]?.state === 'settled')
@@ -426,7 +433,7 @@ interface OwnerClaimRowProps {
   finderAddress: string | null
   token: StrandedToken
   rescueAbiEntry?: RescueAbiEntry
-  onStatusChange?: (tokenAddress: string, state: RowState, funded: boolean) => void
+  onStatusChange?: (tokenAddress: string, state: RowState, funded: boolean, blacklisted: boolean) => void
 }
 
 const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerClaimRow(
@@ -515,15 +522,48 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
   })
   const funded = (receiverBalance ?? 0n) > 0n
 
+  // settle() pays victim, finder, and protocol sequentially in one tx with
+  // no partial-settlement path — if any one of them is blacklisted by the
+  // token's issuer (USDC/USDT-style), the whole call reverts forever and
+  // the swept funds have no other way out of the receiver. Checked once the
+  // receiver is funded — a real risk reduction, not a guarantee, since a
+  // blacklisting that happens after this check but before settle() lands
+  // isn't caught.
+  const [blacklistStatus, setBlacklistStatus] = useState<'unknown' | 'checking' | 'safe' | 'blocked'>('unknown')
+  const [blockedWho, setBlockedWho] = useState<'owner' | 'finder' | 'protocol' | null>(null)
+
+  useEffect(() => {
+    if (!funded || isSettled) return
+    setBlacklistStatus('checking')
+    const addresses = [ownerAddress, ...(hasFinder ? [finderForClaim] : [])].join(',')
+    fetch(`/api/blacklist-check?chain=${chain}&token=${token.tokenAddress}&addresses=${addresses}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.success) { setBlacklistStatus('unknown'); return }
+        const blacklisted = d.blacklisted as Record<string, boolean>
+        if (blacklisted[ownerAddress.toLowerCase()]) {
+          setBlockedWho('owner'); setBlacklistStatus('blocked')
+        } else if (hasFinder && blacklisted[finderForClaim.toLowerCase()]) {
+          setBlockedWho('finder'); setBlacklistStatus('blocked')
+        } else if (blacklisted[d.protocolFeeRecipient]) {
+          setBlockedWho('protocol'); setBlacklistStatus('blocked')
+        } else {
+          setBlacklistStatus('safe')
+        }
+      })
+      .catch(() => setBlacklistStatus('unknown'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funded, isSettled, chain, token.tokenAddress, ownerAddress, hasFinder, finderForClaim])
+
   // Report the *derived* status up, not the raw local `state` — a token
   // already registered/settled on a previous visit still starts this
   // component at local state 'idle' until the on-chain reads above resolve,
   // and the batch controls need the real picture, not the fresh-mount one.
   const derivedState: RowState = isSettled ? 'settled' : isRegistered ? 'registered' : state
   useEffect(() => {
-    onStatusChange?.(token.tokenAddress, derivedState, funded)
+    onStatusChange?.(token.tokenAddress, derivedState, funded, blacklistStatus === 'blocked')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [derivedState, funded])
+  }, [derivedState, funded, blacklistStatus])
 
   // Live balance of the stranded contract itself — this is the amount an
   // owner would actually rescue, distinct from `receiverBalance` above
@@ -647,6 +687,13 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
 
   const handleSettle = async () => {
     if (!claimId) return
+    // Belt-and-suspenders: the button above already hides itself once
+    // blocked, but this is exposed via the imperative handle too — guard
+    // the call itself so nothing can trigger a doomed settle() around it.
+    if (blacklistStatus === 'blocked') {
+      setErrorMsg('Blocked — a recipient is blacklisted for this token. Settling would permanently strand the funds.')
+      return
+    }
     setErrorMsg(null)
     try {
       await switchChainAsync({ chainId }).catch(() => {})
@@ -750,14 +797,27 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
               ? <span style={{ color: 'var(--green)' }}>● Funded — ready to settle</span>
               : `Call your rescue function to send ${token.tokenSymbol} here.`}
           </div>
+
+          {funded && blacklistStatus === 'blocked' && (
+            <div style={{
+              marginBottom: '6px', padding: '7px 9px', borderRadius: '5px',
+              background: 'var(--crimson-soft)', border: '1px solid var(--crimson-border)',
+              color: 'var(--crimson)', fontSize: '0.6rem', lineHeight: 1.7,
+            }}>
+              This claim can&apos;t be safely settled — the {blockedWho} address is blacklisted by
+              this token&apos;s issuer. Settling now would permanently strand the funds with no
+              recovery path. Do not proceed.
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button onClick={copyReceiverInstructions} style={{ ...btnStyle, background: 'var(--card)', color: 'var(--text)' }}>
               {copied ? '✓ Copied' : 'Copy Instructions'}
             </button>
-            {funded && (
-              <button onClick={handleSettle} disabled={state === 'settling'}
-                style={{ ...btnStyle, background: 'var(--green)', color: '#fff', border: 'none', opacity: state === 'settling' ? 0.6 : 1 }}>
-                {state === 'settling' ? 'Settling…' : 'Settle'}
+            {funded && blacklistStatus !== 'blocked' && (
+              <button onClick={handleSettle} disabled={state === 'settling' || blacklistStatus === 'checking'}
+                style={{ ...btnStyle, background: 'var(--green)', color: '#fff', border: 'none', opacity: (state === 'settling' || blacklistStatus === 'checking') ? 0.6 : 1 }}>
+                {state === 'settling' ? 'Settling…' : blacklistStatus === 'checking' ? 'Checking…' : 'Settle'}
               </button>
             )}
           </div>

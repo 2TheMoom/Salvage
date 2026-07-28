@@ -10,7 +10,7 @@
 
 [**Live app**](https://usesalvage.xyz) · [**Base App Mini App**](https://salvage-miniapp.vercel.app) · [**X @Salvage_xyz**](https://x.com/Salvage_xyz) · [**Farcaster @Salvage-xyz**](https://warpcast.com/salvage-xyz) · gethelp.salvage@gmail.com
 
-Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$220K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)).
+Millions of dollars sit stranded inside smart contracts — sent there by mistake and assumed gone forever. The USDC contract alone holds over **$230K** in tokens people accidentally transferred to it ([verify the balances yourself on Etherscan](https://etherscan.io/tokenholdings?a=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)).
 
 Salvage is the missing standard for getting them back: **scan** any contract or wallet for stranded value, **triage** whether it's technically recoverable, and **settle** the recovery trustlessly on-chain. The web app is the reference implementation — the protocol underneath is built to be integrated by wallets, explorers, and support tooling.
 
@@ -118,8 +118,9 @@ The router is designed so most attacks die by construction:
 - **EIP-712 signatures** with deadline expiry and EIP-2 malleability rejection
 - **Balance-delta accounting** — fee-on-transfer tokens split correctly
 - **Residual-safe** — `settle()` can run again if more tokens arrive later
+- **Blacklist-aware settlement (mitigation, not a fix):** `settle()` pays victim, finder, and protocol sequentially in one call — if any single recipient is ever blacklisted by the token's issuer (USDC/USDT-style), that call reverts and the swept funds have no other way out of the claim's receiver, since the router is non-upgradeable by design. The app checks every recipient's blacklist status before offering the Settle button and blocks it if one is flagged — real risk reduction (catches the common case: already blacklisted before settlement is attempted), not a guarantee (a blacklisting that happens between the check and the transaction landing isn't caught). Closing this at the contract level would need a new router deployment; not planned unless it becomes a real problem in practice.
 
-Test suite: 10/10 passing (`npx hardhat test`) covering both fee paths, deterministic receiver prediction, residual settlement, forged/expired/duplicate signatures, fee-on-transfer math, and ownership.
+Test suite: 16/16 passing (`npx hardhat test`) covering both fee paths, deterministic receiver prediction, residual settlement, forged/expired/duplicate signatures, fee-on-transfer math, ownership, and batch register/settle.
 
 The application layer gets the same scrutiny as the contract: RLS on every Supabase table denies writes from the public anon key by default (verified directly, not assumed), trigger functions are pinned against the mutable-`search_path` privilege-escalation class, and the scan endpoints are rate-limited (Upstash-backed, shared across serverless instances rather than an in-memory counter that resets on every cold start) to stop a scripted hammering from running up RPC/explorer API costs.
 
