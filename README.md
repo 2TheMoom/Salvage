@@ -62,10 +62,12 @@ Anyone can discover a stranded balance before the affected team or victim does. 
 
 - **Abuse case:** a victim can't register as their own finder — rejected off-chain (the API checks `finder !== victim` before writing) and on-chain (`registerClaim()` reverts on `finder == victim`, [`SalvageRecoveryRouter.sol`](contracts-hardhat/contracts/SalvageRecoveryRouter.sol)). What this *doesn't* stop: someone using a second wallet they also control as "finder" — no signature scheme can prove two addresses belong to different people, so this is an accepted, bounded risk (worth at most the gap between the two fee schedules above), not a solved one.
 - **Stale registrations expire after 90 days** unless the claim has already settled — otherwise a single abandoned (or bot-squatted) registration would lock a find permanently, blocking any finder who could actually deliver the outreach. A settled find can never be reopened, checked directly against the claims registry.
-- **Victim contact today is manual** — the finder reaches out with the app's generated outreach message. Automated reverse-lookup (Basename/ENS, Farcaster) is on the roadmap, not built yet.
+- **Contact discovery is automatic where possible** — a scanned contract's owner/deployer is reverse-resolved to an ENS name or Farcaster account and shown directly on the result card, and the generated outreach message personalizes its greeting and links straight to their Farcaster profile when one resolves. Basename resolution is implemented too (per the ENSIP-19 spec, verified against viem's own documented API) but currently finds nothing for real accounts — the underlying mainnet call reverts for every address tested, including viem's own docs example, most likely because Base's "L2 primary names" standard is still rolling out rather than a bug here. Falls back to the plain address with no visible change when nothing resolves.
 
 ### 🕵️ Did I Lose Tokens?
 Paste your wallet address. Salvage scans your transfer history for the classic mistake — tokens sent **directly to a token contract's own address** — verified on-chain via calldata analysis (fee-on-transfer side effects are excluded by construction). Each finding shows what you lost, whether the contract still holds it, and whether a recovery path exists.
+
+Works for any wallet, not just your own connected one — if the address you search isn't the one you're connected with, Salvage resolves *its* ENS/Basename/Farcaster identity too, so a finder checking a stranger's wallet on their behalf gets the same contact path as scanning a contract. Searching your own wallet stays exactly as before — nothing to resolve about yourself.
 
 ### 📱 Base App Mini App
 Salvage runs natively inside the Base App as a Mini App. Open it and your wallet is already connected — one tap scans it across **both Ethereum and Base in parallel**, findings labeled by chain. Recovery no longer means leaving the app either: signing the EIP-712 claim, registering it on-chain, and settling once funded all happen natively in the Mini App now — no redirect to the website to finish. Scope is deliberately narrower than the web app: the Contract Scanner and the owner-side recovery panel stay web-only. Built with MiniKit / OnchainKit and `@farcaster/miniapp-sdk`; registered on Base Dashboard. Wallet-address opt-in captures interest for recovery alerts (delivery pending Base's notifications API).
@@ -127,7 +129,7 @@ The application layer gets the same scrutiny as the contract: RLS on every Supab
 ## Stack
 
 - **Frontend:** Next.js 14 · TypeScript · wagmi v2 / viem
-- **Data:** Alchemy (RPC, Token API, Prices API) · Etherscan API V2 · Supabase (leaderboard, claims/finds registry) · Upstash Redis (rate limiting)
+- **Data:** Alchemy (RPC, Token API, Prices API) · Etherscan API V2 · Supabase (leaderboard, claims/finds registry) · Upstash Redis (rate limiting + identity cache) · Neynar (Farcaster lookup) · viem/ENS (ENS + Basename reverse resolution)
 - **Contracts:** Solidity 0.8.20 · Hardhat 3 · Ignition deploys · node:test + viem test suite
 - **Chains:** Ethereum + Base
 - **Base App:** MiniKit / OnchainKit Mini App · registered on Base Dashboard · wallet-address notification opt-in
@@ -138,7 +140,7 @@ The application layer gets the same scrutiny as the contract: RLS on every Supab
 src/
   app/api/         scan, victim-scan, claims, leaderboard, stats
   components/      dashboard, scanner UI, recovery claim panel
-  lib/             scanner (triage), sweeper (balances+pricing), victim (loss detection)
+  lib/             scanner (triage), sweeper (balances+pricing), victim (loss detection), identity (ENS/Basename/Farcaster lookup)
 contracts-hardhat/
   contracts/       SalvageRecoveryRouter.sol, SalvageFeeContract.sol
   test/            router test suite
@@ -152,7 +154,7 @@ chrome-extension/  pre-send contract-address warning (live on the Chrome Web Sto
 
 ```bash
 npm install
-cp .env.example .env.local   # Alchemy RPCs + API key, Etherscan key, Supabase keys
+cp .env.example .env.local   # Alchemy RPCs + API key, Etherscan key, Supabase keys, Neynar key (optional — Farcaster lookup only)
 npm run dev
 ```
 
@@ -186,6 +188,10 @@ npx hardhat test
 
 - **✅ Pre-send warning (Chrome extension):** checks the recipient address on-chain before a transfer is confirmed and warns if it's a contract, not a wallet — the one feature that makes Salvage preventive, not just reactive. Live on the [Chrome Web Store](https://chromewebstore.google.com/detail/koapbokfimkgdbkkdabkdicpmclpenhb). **Known gap:** content scripts can't reach into another extension's own popup UI — a hard Chrome security boundary, not a bug — so this doesn't fire inside MetaMask/Coinbase Wallet/Rabby's native send screens, only on address fields in regular webpages (exchange withdrawal forms, DeFi frontends, block explorers) and Salvage's own toolbar popup (bound to Alt+Shift+S / Cmd+Shift+S for a quick manual check). Closing the wallet-popup gap for real means those wallets integrating a check like this natively — an outreach/partnership effort, not something a third-party extension can build its way around.
 
+### Shipped — v1.5
+
+- **✅ Contact discovery via ENS/Basename/Farcaster:** reverse-resolves a contract's owner/deployer — and, in "Did I Lose Tokens?", any wallet being searched by someone other than its own connected owner — to a human identity, so a finder has an actual way to reach them instead of a dead-end outreach template. ENS and Farcaster are confirmed working with real on-chain/API data (viem's `getEnsName` against a mainnet client; Neynar's bulk-by-address API for Farcaster). The generated outreach message personalizes its greeting and a "Message on Farcaster" link appears when an identity resolves. Basename resolution is implemented per the ENSIP-19 spec — no new dependency, viem's own `toCoinType` covers it from the same mainnet client — but currently reverts for every address tested (confirmed via viem's `strict` mode, not silently swallowed), including ENS's own documented example address, not just real users here. Most likely explanation: Base's own blog titles the underlying standard *"L2 Primary Names are coming to Basenames: ENSIP-19"* — still rolling out, not yet backfilled for most accounts even when marked primary in Base's own app. Left as-is rather than hand-rolling a direct Base L2 registry read, since the failure is at the protocol/infrastructure level, not this integration. Deliberately scoped to addresses a finder would actually need to contact — never resolved for your own wallet or an arbitrary typed-in EOA, to avoid turning this into a doxxing tool.
+
 ### Up next
 
 - **In-app rescue execution:** the owner panel already decodes the real rescue function and builds correct calldata (`Copy Raw Calldata`) — the owner still has to broadcast it themselves via Etherscan/Basescan or their own wallet. Once the decode/pre-fill logic has more real-world mileage, add a "Send" button that fires that same calldata directly from Salvage (a plain `sendTransaction` to the stranded contract, no new integration needed) so recovery never requires leaving the app.
@@ -194,7 +200,7 @@ npx hardhat test
 - **Recoverability Score:** every scanned contract gets a 0–100 score derived from the triage inputs (verification, rescue functions, upgradeability, ownership, proxy pattern) — one shareable number, full details underneath. Once live on the web app, the same score feeds the Chrome extension's pre-send warning, so it can show a graded signal instead of a flat contract-or-not check.
 - **AccessControl ownership detection:** the owner panel only recognizes standard `Ownable`-style contracts today — role-based `AccessControl` ownership isn't detected, so the panel simply doesn't appear for those, even when the connected wallet genuinely holds the relevant role. Extend detection to cover this class of contract.
 - **Multisig/timelock-aware triage:** the scanner is already honest about this gap — a `rescueERC20()` gated behind a timelock, or an `owner()` pointing at a multisig that's lost its signers, still reads as "Recoverable" today, which overstates how straightforward the recovery actually is. A cheap first step: detect a Gnosis Safe as owner and label it "Recovery requires signer coordination" instead of the flat verdict — more honest without needing a full timelock/multisig solve.
-- **Victim contact discovery:** Basename/ENS reverse-resolution and Farcaster lookup so finders can reach wallet owners.
+- **Basename reverse-resolution, properly:** revisit once Base's ENSIP-19 "L2 primary names" standard matures / more accounts get backfilled (see v1.5 above) — or hand-roll a direct Base L2 registry read instead of going through mainnet's ENSIP-19 path, pulling verified contract addresses from OnchainKit's published source rather than web search.
 - **Proactive re-scanning:** periodically re-check known contracts (not just on-demand) so an owner can be notified the moment something new gets stranded, not only when they happen to revisit.
 - **Public scan API:** let other wallets and explorers check an address for stranded tokens directly, instead of only through this site. Tiered access (a free rate-limited tier alongside a higher-throughput one) rather than one flat limit for everyone, once real third-party demand shows up.
 - **Finder watchlists:** follow a specific contract and get notified the moment a new stranded balance shows up in it — the finder-facing complement to proactive re-scanning, turning one-time scanners into standing trackers. Ships after public launch.

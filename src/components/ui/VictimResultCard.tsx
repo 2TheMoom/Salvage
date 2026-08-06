@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAccount } from 'wagmi'
 import { VictimScanResult, VictimFinding } from '@/types'
 import { truncateAddress } from '@/lib/utils'
+import { useIdentity } from '@/lib/useIdentity'
 import RecoveryClaimPanel from '@/components/ui/RecoveryClaimPanel'
+import IdentityBadge from '@/components/ui/IdentityBadge'
 
 interface VictimResultCardProps {
   result: VictimScanResult
@@ -203,6 +206,16 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
   const hasFindings = result.findings.length > 0
   const [recovered, setRecovered] = useState<RecoveredClaim[]>([])
 
+  // Someone can paste ANY wallet into "Did I Lose Tokens?" — when it isn't
+  // their own, they're a finder looking at a stranger's loss, same as the
+  // contract-owner case in ScanResultCard. Only resolve/show identity for
+  // that scenario — searching your own wallet gets you nothing new here,
+  // and reverse-resolving is scoped to "someone else you might contact."
+  const { address: connectedAddress } = useAccount()
+  const isOtherWallet = !!connectedAddress && connectedAddress.toLowerCase() !== result.wallet.toLowerCase()
+  const { identity: walletIdentity } = useIdentity(isOtherWallet ? result.wallet : undefined)
+  const walletHasIdentity = !!(walletIdentity?.ens || walletIdentity?.basename || walletIdentity?.farcaster)
+
   useEffect(() => {
     fetch(`/api/claims?victim=${result.wallet}`)
       .then(r => r.json())
@@ -232,7 +245,10 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
             fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
             color: 'var(--text-2)', marginTop: '4px',
           }}>
-            {truncateAddress(result.wallet)} · {result.chain === 'eth' ? 'Ethereum' : 'Base'}
+            {isOtherWallet
+              ? <IdentityBadge address={result.wallet} />
+              : truncateAddress(result.wallet)}
+            {' '}· {result.chain === 'eth' ? 'Ethereum' : 'Base'}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -250,6 +266,26 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Someone else's wallet, resolved to a contactable identity — this is
+          the "I found value for a stranger" case, same as the contract-owner
+          row in ScanResultCard. */}
+      {isOtherWallet && walletHasIdentity && (
+        <div style={{
+          padding: '12px 26px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)',
+          }}>
+            Wallet owner
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text)' }}>
+            <IdentityBadge address={result.wallet} showFarcasterLink />
+          </span>
+        </div>
+      )}
 
       {/* Findings */}
       <div style={{ padding: '16px 26px' }}>

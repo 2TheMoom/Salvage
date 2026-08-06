@@ -1,4 +1,5 @@
 import { ScanResult } from '@/types'
+import type { ResolvedIdentity } from '@/lib/identity'
 
 function formatUsd(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
@@ -6,7 +7,14 @@ function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`
 }
 
-export function generateOutreachTemplate(result: ScanResult): string {
+function greetingFor(identity?: ResolvedIdentity): string {
+  if (identity?.farcaster) return `Hi @${identity.farcaster.username},`
+  if (identity?.basename)  return `Hi ${identity.basename.name},`
+  if (identity?.ens)       return `Hi ${identity.ens.name},`
+  return 'Hi [Team Name],'
+}
+
+export function generateOutreachTemplate(result: ScanResult, ownerIdentity?: ResolvedIdentity): string {
   const chainName    = result.chain === 'eth' ? 'Ethereum' : 'Base'
   const explorerBase = result.chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'
   const explorerLink = `${explorerBase}/address/${result.contractAddress}`
@@ -27,7 +35,7 @@ export function generateOutreachTemplate(result: ScanResult): string {
 
   return `Subject: ${formatUsd(totalUsd)} in tokens stranded in your contract — recoverable
 
-Hi [Team Name],
+${greetingFor(ownerIdentity)}
 
 I'm reaching out about stranded token balances sitting inside your contract on ${chainName}.
 

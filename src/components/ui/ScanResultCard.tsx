@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { ScanResult, TriageCheck, StrandedToken } from '@/types'
 import { truncateAddress, explorerUrl } from '@/lib/utils'
 import { generateOutreachTemplate } from '@/lib/outreach'
+import { useIdentity } from '@/lib/useIdentity'
 import RegisterFindButton from '@/components/ui/RegisterFindButton'
 import OwnerClaimPanel from '@/components/ui/OwnerClaimPanel'
+import IdentityBadge from '@/components/ui/IdentityBadge'
 
 interface ScanResultCardProps {
   result: ScanResult
@@ -94,6 +96,9 @@ function StrandedTokenRow({ token }: { token: StrandedToken }) {
 export default function ScanResultCard({ result }: ScanResultCardProps) {
   const [copied, setCopied]             = useState(false)
   const [showAllTokens, setShowAllTokens] = useState(false)
+  // Resolved once here so both the owner-identity row below and the
+  // outreach template use the same data — avoids a second fetch on click.
+  const { identity: ownerIdentity } = useIdentity(result.ownerAddress)
 
   const statusCfg    = STATUS_CONFIG[result.triageStatus]
   const explorerLink = explorerUrl(result.contractAddress, result.chain)
@@ -115,7 +120,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
       }]
 
   const handleCopyOutreach = () => {
-    const template = generateOutreachTemplate(result)
+    const template = generateOutreachTemplate(result, ownerIdentity ?? undefined)
     navigator.clipboard.writeText(template)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -171,11 +176,32 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
         <div className="r-metric">
           <div className="r-m-label">Deployed By</div>
           <div className="r-m-val mono">
-            {result.deployerAddress ? truncateAddress(result.deployerAddress) : '—'}
+            {result.deployerAddress ? <IdentityBadge address={result.deployerAddress} /> : '—'}
           </div>
           <div className="r-m-sub">Contract creator</div>
         </div>
       </div>
+
+      {/* Owner contact — the actual person/team a finder needs to reach.
+          Deliberately rendered here rather than inside OwnerClaimPanel,
+          which hides its own UI from everyone except the connected owner
+          wallet; the finder viewing this card is never that wallet. */}
+      {result.ownerAddress && (ownerIdentity?.ens || ownerIdentity?.basename || ownerIdentity?.farcaster) && (
+        <div style={{
+          padding: '14px 26px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)',
+          }}>
+            Contract owner
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text)' }}>
+            <IdentityBadge address={result.ownerAddress} showFarcasterLink />
+          </span>
+        </div>
+      )}
 
       {/* Stranded tokens breakdown — top 5 by value, expandable */}
       {hasStranded && (() => {
