@@ -7,6 +7,9 @@ node_modules
 .next
 out
 build
+*.tsbuildinfo
+# Rewritten by Next/Turbopack on every dev vs. build run — noise, not a real change
+next-env.d.ts
 
 # env — NEVER commit real keys
 .env.local
