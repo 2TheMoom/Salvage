@@ -9,5 +9,8 @@
   "MockTestTokensRound2Module#MockE": "0xdBAdE0C80C261c9396c40D495ca6Bb838bbB38fF",
   "MockTestTokensRound2Module#MockF": "0xfb9424315453dd8Ea52663C0385451c7D0D9e978",
   "MockTestTokensRound2Module#MockG": "0x611ab5a9Dfab23Cac68c22F0283595536472Ba47",
-  "MockTestTokensRound2Module#MockH": "0xDc710D52dE82f43a6095335639618C0f235E034C"
+  "MockTestTokensRound2Module#MockH": "0xDc710D52dE82f43a6095335639618C0f235E034C",
+  "MockStrandedVaultTestModule#MockERC20": "0x71386330d2c7d21528E2fe5065d4Ad0Ce489877b",
+  "MockStrandedVaultTestModule#MockStrandedVault": "0x1beA430BAcBE76aC2486D2cDA19a449A5de865e8",
+  "MockStrandedVaultTokenV2Module#MockERC20": "0x500F0fE69B2A1a37992D0C57D0b0DCb4ee2Ea092"
 }

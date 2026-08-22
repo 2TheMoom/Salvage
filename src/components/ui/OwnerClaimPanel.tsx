@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
 import {
-  useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain,
+  useAccount, useSignTypedData, useWriteContract, useReadContract, useSwitchChain, useSendTransaction,
 } from 'wagmi'
 import { waitForTransactionReceipt, estimateGas } from 'wagmi/actions'
 import { keccak256, encodeAbiParameters, encodeFunctionData, zeroAddress, type Abi } from 'viem'
@@ -443,15 +443,18 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
   const chainId = CHAIN_IDS[chain]
   const routerAddress = RECOVERY_ROUTER_ADDRESS[chainId]
 
-  const { switchChainAsync }   = useSwitchChain()
-  const { signTypedDataAsync } = useSignTypedData()
-  const { writeContractAsync } = useWriteContract()
+  const { switchChainAsync }     = useSwitchChain()
+  const { signTypedDataAsync }   = useSignTypedData()
+  const { writeContractAsync }   = useWriteContract()
+  const { sendTransactionAsync } = useSendTransaction()
 
   const [state, setState]           = useState<RowState>('idle')
   const [errorMsg, setErrorMsg]     = useState<string | null>(null)
   const [registerTx, setRegisterTx] = useState<string | null>(null)
   const [settleTx, setSettleTx]     = useState<string | null>(null)
   const [copied, setCopied]         = useState(false)
+  const [sendState, setSendState]   = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [sendTx, setSendTx]         = useState<string | null>(null)
 
   const finderForClaim = (finderAddress ?? zeroAddress) as `0x${string}`
   const hasFinder = finderForClaim !== zeroAddress
@@ -726,6 +729,42 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
     }
   }
 
+  // Fires the same calldata the "Copy Raw Calldata" button copies — an
+  // arbitrary call into a contract Salvage doesn't control or audit, so the
+  // owner's own wallet confirmation is the only safety checkpoint, same as
+  // if they'd pasted this into Etherscan themselves. A rejected/failed send
+  // is distinguished from a call that broadcast but reverted on-chain (wrong
+  // params, access-control mismatch) — both are real failure modes here,
+  // and only a genuine on-chain success should read as "sent."
+  const handleSendRescue = async () => {
+    if (!rescueCalldata) return
+    setErrorMsg(null)
+    try {
+      await switchChainAsync({ chainId }).catch(() => {})
+      setSendState('sending')
+      const txHash = await sendTransactionAsync({
+        to: contractAddress as `0x${string}`,
+        data: rescueCalldata,
+        chainId,
+      })
+      setSendTx(txHash)
+      const receipt = await waitForTransactionReceipt(config, { hash: txHash, chainId })
+      if (receipt.status === 'reverted') {
+        setErrorMsg("The transaction reverted on-chain — the contract rejected this call. Verify the parameters and your wallet's permissions, or send manually to double-check.")
+        setSendState('error')
+        return
+      }
+      setSendState('sent')
+      refetchBalance()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Transaction failed'
+      setErrorMsg(msg.includes('rejected') || msg.includes('denied')
+        ? 'Transaction rejected.'
+        : 'Send failed. Verify the calldata and try again, or send manually.')
+      setSendState('error')
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     register: handleRegister,
     settle: handleSettle,
@@ -862,6 +901,10 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
                   style={{ ...btnStyle, background: 'var(--card-inner)', color: 'var(--text)', opacity: rescueCalldata ? 1 : 0.5 }}>
                   {calldataCopied ? '✓ Copied' : 'Copy Raw Calldata'}
                 </button>
+                <button onClick={handleSendRescue} disabled={!rescueCalldata || sendState === 'sending'}
+                  style={{ ...btnStyle, background: 'var(--eth)', color: '#fff', border: 'none', opacity: (!rescueCalldata || sendState === 'sending') ? 0.5 : 1 }}>
+                  {sendState === 'sending' ? 'Sending…' : sendState === 'sent' ? '✓ Sent — Send Again' : 'Send'}
+                </button>
               </div>
               <div style={{ fontSize: '0.58rem', color: 'var(--text-3)', marginTop: '5px' }}>
                 Send to contract: <span style={{ wordBreak: 'break-all' }}>{contractAddress}</span>
@@ -881,12 +924,18 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
         </button>
       )}
 
-      {(registerTx || settleTx) && (
+      {(registerTx || settleTx || sendTx) && (
         <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
           {registerTx && (
             <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
                target="_blank" rel="noopener noreferrer">
               Registration tx ↗
+            </a>
+          )}
+          {sendTx && (
+            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${sendTx}`}
+               target="_blank" rel="noopener noreferrer">
+              Rescue tx ↗
             </a>
           )}
           {settleTx && (

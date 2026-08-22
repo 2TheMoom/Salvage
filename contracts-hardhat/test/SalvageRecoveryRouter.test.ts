@@ -149,7 +149,12 @@ describe("SalvageRecoveryRouter", async () => {
   });
 
   it("rejects expired signatures", async () => {
-    const past = BigInt(Math.floor(Date.now() / 1000) - 10);
+    // Derived from the chain's own current block timestamp, not wall-clock
+    // Date.now() — the local network's simulated clock can drift behind
+    // real time as more of the suite runs, which previously made this
+    // flaky depending on what ran before it.
+    const currentBlock = await publicClient.getBlock();
+    const past = currentBlock.timestamp - 10n;
     const params = {
       token: token.address as Address, victim,
       finder: zeroAddress, lossTxHash: LOSS_TX, deadline: past,
