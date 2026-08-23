@@ -7,6 +7,7 @@ import { generateOutreachTemplate } from '@/lib/outreach'
 import { useIdentity } from '@/lib/useIdentity'
 import RegisterFindButton from '@/components/ui/RegisterFindButton'
 import OwnerClaimPanel from '@/components/ui/OwnerClaimPanel'
+import AccessControlOwnerGate from '@/components/ui/AccessControlOwnerGate'
 import IdentityBadge from '@/components/ui/IdentityBadge'
 
 interface ScanResultCardProps {
@@ -251,6 +252,22 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
             contractAddress={result.contractAddress}
             chain={result.chain}
             ownerAddress={result.ownerAddress}
+            tokens={result.strandedTokens!}
+            rescueAbiEntry={result.rescueAbiEntry}
+          />
+        </div>
+      )}
+
+      {/* AccessControl contracts have no single owner() — this checks the
+          connected wallet's actual on-chain role and renders the same
+          OwnerClaimPanel if it matches. Silent (renders nothing) otherwise,
+          same fail-closed behavior as the Ownable path above. */}
+      {hasStranded && !result.ownerAddress && result.accessControlRoles && result.accessControlRoles.length > 0 && (
+        <div style={{ padding: '0 26px' }}>
+          <AccessControlOwnerGate
+            contractAddress={result.contractAddress}
+            chain={result.chain}
+            roles={result.accessControlRoles}
             tokens={result.strandedTokens!}
             rescueAbiEntry={result.rescueAbiEntry}
           />

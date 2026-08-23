@@ -259,9 +259,45 @@ export function detectOwner(abiJson: string): boolean {
     return abi.some(
       (item: { type: string; name: string }) =>
         item.type === 'function' &&
-        ['owner', 'getOwner', 'DEFAULT_ADMIN_ROLE', 'getRoleAdmin'].includes(item.name)
+        ['owner', 'getOwner', 'DEFAULT_ADMIN_ROLE', 'getRoleAdmin', 'hasRole'].includes(item.name)
     )
   } catch { return false }
+}
+
+// AccessControl has no single canonical owner() to read server-side — a
+// contract can have many role holders, and which one can actually call the
+// rescue function depends on which role gates it. Rather than guess, this
+// returns the role-constant getter NAMES (DEFAULT_ADMIN_ROLE first, since
+// it's the conventional "master" role and the most likely to gate a rescue
+// function) so the frontend can read each one's real bytes32 value and check
+// hasRole() against whichever wallet actually connects.
+export function detectAccessControlRoles(abiJson: string): string[] {
+  try {
+    const abi = JSON.parse(abiJson)
+    const hasRoleFn = abi.some(
+      (item: { type: string; name: string; inputs?: unknown[] }) =>
+        item.type === 'function' && item.name === 'hasRole' &&
+        Array.isArray(item.inputs) && item.inputs.length === 2
+    )
+    if (!hasRoleFn) return []
+
+    const roleGetters: string[] = abi
+      .filter((item: { type: string; name: string; inputs?: unknown[]; stateMutability?: string }) =>
+        item.type === 'function' &&
+        /^[A-Z0-9_]+_ROLE$/.test(item.name || '') &&
+        Array.isArray(item.inputs) && item.inputs.length === 0 &&
+        (item.stateMutability === 'view' || item.stateMutability === 'pure')
+      )
+      .map((item: { name: string }): string => item.name)
+
+    const roles: string[] = roleGetters.includes('DEFAULT_ADMIN_ROLE')
+      ? roleGetters
+      : ['DEFAULT_ADMIN_ROLE', ...roleGetters]
+
+    // A contract declaring dozens of roles isn't realistic — cap it so this
+    // can't turn into an unbounded number of live per-wallet reads.
+    return Array.from(new Set(roles)).slice(0, 8)
+  } catch { return [] }
 }
 
 export function detectUpgradeability(abiJson: string): {
@@ -428,6 +464,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
   let rescueName:   string | undefined
   let rescueAbiEntry: RescueAbiEntry | undefined
   let hasOwner      = false
+  let accessControlRoles: string[] = []
   let isUpgradeable = !!proxyInfo.implementation || proxyInfo.proxyType === 'Beacon'
   let proxyType     = proxyInfo.proxyType
 
@@ -437,6 +474,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     rescueName     = rescue.functionName
     rescueAbiEntry = rescue.abiEntry
     hasOwner     = detectOwner(mergedAbi)
+    accessControlRoles = detectAccessControlRoles(mergedAbi)
 
     if (!isUpgradeable) {
       const proxy   = detectUpgradeability(mergedAbi)
@@ -466,6 +504,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     deployerAddress,
     implementationAddress: proxyInfo.implementation,
     ownerAddress,
+    accessControlRoles: accessControlRoles.length > 0 ? accessControlRoles : undefined,
     rescueAbiEntry,
     triageStatus:          status,
     checks,

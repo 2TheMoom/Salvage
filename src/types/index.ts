@@ -32,6 +32,10 @@ export interface ScanResult {
   deployerAddress?: string
   implementationAddress?: string
   ownerAddress?: string
+  // Set only when the ABI exposes hasRole(bytes32,address) but no owner() —
+  // role-constant getter names to check live against the connected wallet,
+  // since AccessControl has no single canonical owner to resolve server-side.
+  accessControlRoles?: string[]
   rescueAbiEntry?: RescueAbiEntry
   triageStatus: TriageStatus
   checks: TriageCheck[]
