@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { claimId, chain, tokenSymbol, valueUsd, registerTx, recipientContract } = body
 
-    if (!claimId || !chain || !['eth', 'base'].includes(chain)) {
+    if (!claimId || !chain || !['eth', 'base', 'arc'].includes(chain)) {
       return corsJson(req, { success: false, error: 'Missing required fields' }, { status: 400 })
     }
 

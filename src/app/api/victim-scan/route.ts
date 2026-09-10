@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!chain || !['eth', 'base'].includes(chain)) {
+    if (!chain || !['eth', 'base', 'arc'].includes(chain)) {
       return NextResponse.json<VictimScanApiResponse>(
-        { success: false, error: 'Invalid chain. Must be "eth" or "base".' },
+        { success: false, error: 'Invalid chain. Must be "eth", "base", or "arc".' },
         { status: 400, headers: corsHeaders }
       )
     }

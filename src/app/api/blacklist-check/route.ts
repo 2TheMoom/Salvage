@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const token = req.nextUrl.searchParams.get('token')
     const addressesParam = req.nextUrl.searchParams.get('addresses')
 
-    if (!chain || (chain !== 'eth' && chain !== 'base')) {
+    if (!chain || (chain !== 'eth' && chain !== 'base' && chain !== 'arc')) {
       return corsJson(req, { success: false, error: 'Invalid chain' }, { status: 400 })
     }
     if (!token || !isValidAddress(token)) {
