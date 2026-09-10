@@ -306,7 +306,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
               className="btn-out"
               style={{ textDecoration: 'none', display: 'inline-block' }}
             >
-              {chainLabel === 'Ethereum' ? 'Etherscan' : 'Basescan'} ↗
+              {chainLabel === 'Ethereum' ? 'Etherscan' : chainLabel === 'Base' ? 'Basescan' : 'Arcscan'} ↗
             </a>
           </>
         ) : (
@@ -326,7 +326,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
               className="btn-out"
               style={{ textDecoration: 'none', display: 'inline-block' }}
             >
-              {chainLabel === 'Ethereum' ? 'Etherscan' : 'Basescan'} ↗
+              {chainLabel === 'Ethereum' ? 'Etherscan' : chainLabel === 'Base' ? 'Basescan' : 'Arcscan'} ↗
             </a>
             <span className="dead-note">Documented on public leaderboard</span>
           </>
