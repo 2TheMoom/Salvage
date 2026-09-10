@@ -103,7 +103,7 @@ export default function ScanResultCard({ result }: ScanResultCardProps) {
 
   const statusCfg    = STATUS_CONFIG[result.triageStatus]
   const explorerLink = explorerUrl(result.contractAddress, result.chain)
-  const chainLabel   = result.chain === 'eth' ? 'Ethereum' : 'Base'
+  const chainLabel   = result.chain === 'eth' ? 'Ethereum' : result.chain === 'base' ? 'Base' : 'Arc'
   const symbol       = result.tokenSymbol || '???'
   const name         = result.tokenName   || 'Unknown Contract'
   const hasStranded  = result.strandedTokens && result.strandedTokens.length > 0

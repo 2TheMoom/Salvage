@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
-import { VictimScanResult, VictimFinding } from '@/types'
+import { VictimScanResult, VictimFinding, Chain } from '@/types'
 import { truncateAddress } from '@/lib/utils'
 import { useIdentity } from '@/lib/useIdentity'
 import RecoveryClaimPanel from '@/components/ui/RecoveryClaimPanel'
@@ -42,7 +42,7 @@ function statusChip(f: VictimFinding) {
 }
 
 function buildVictimOutreach(f: VictimFinding, chain: string): string {
-  const chainName = chain === 'eth' ? 'Ethereum' : 'Base'
+  const chainName = chain === 'eth' ? 'Ethereum' : chain === 'base' ? 'Base' : 'Arc'
   const rescue = f.rescueFunction
     ? `Your contract's ABI includes ${f.rescueFunction}(), so the tokens can be returned directly by the contract owner — no upgrade needed.`
     : `We understand recovery may require action from the contract owner or governance.`
@@ -182,7 +182,7 @@ function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; 
         <RecoveryClaimPanel
           finding={finding}
           victimWallet={victimWallet}
-          chain={chain as 'eth' | 'base'}
+          chain={chain as Chain}
         />
       )}
     </div>
@@ -190,7 +190,9 @@ function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; 
 }
 
 function explorerTxUrl(txHash: string, chain: string): string {
-  const base = chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'
+  const base = chain === 'eth' ? 'https://etherscan.io'
+    : chain === 'base' ? 'https://basescan.org'
+    : 'https://testnet.arcscan.app'
   return `${base}/tx/${txHash}`
 }
 
@@ -248,7 +250,7 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
             {isOtherWallet
               ? <IdentityBadge address={result.wallet} />
               : truncateAddress(result.wallet)}
-            {' '}· {result.chain === 'eth' ? 'Ethereum' : 'Base'}
+            {' '}· {result.chain === 'eth' ? 'Ethereum' : result.chain === 'base' ? 'Base' : 'Arc'}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>

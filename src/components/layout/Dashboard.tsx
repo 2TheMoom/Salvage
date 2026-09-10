@@ -82,7 +82,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
   const [victimResult, setVictimResult] = useState<VictimScanResult | null>(null)
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
   const [leaderboard, setLeaderboard]     = useState<LeaderboardEntry[]>([])
-  const [lbChain, setLbChain]             = useState<'eth' | 'base'>('eth')
+  const [lbChain, setLbChain]             = useState<Chain>('eth')
   const [lbLoading, setLbLoading]         = useState(false)
   const [lbPage, setLbPage]               = useState(1)
   const [lbTotalPages, setLbTotalPages]   = useState(1)
@@ -94,6 +94,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
     totalStrandedUsd: number
     strandedEthUsd: number
     strandedBaseUsd: number
+    strandedArcUsd: number
     recoverableUsd: number
     recoverableCount: number
     contractsIndexed: number
@@ -292,7 +293,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
           <div className="d-stat-num">{stats ? formatUsdShort(stats.totalStrandedUsd) : '—'}</div>
           <div className="d-stat-sub">
             {stats
-              ? `ETH ${formatUsdShort(stats.strandedEthUsd)} · Base ${formatUsdShort(stats.strandedBaseUsd)} · ${stats.contractsIndexed} contracts`
+              ? `ETH ${formatUsdShort(stats.strandedEthUsd)} · Base ${formatUsdShort(stats.strandedBaseUsd)} · Arc ${formatUsdShort(stats.strandedArcUsd)} · ${stats.contractsIndexed} contracts`
               : 'Loading…'}
           </div>
         </div>
@@ -374,6 +375,10 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                   className={`c-tab ${chain === 'base' ? 'on' : ''}`}
                   onClick={() => setChain('base')}
                 >BASE</button>
+                <button
+                  className={`c-tab ${chain === 'arc' ? 'on' : ''}`}
+                  onClick={() => setChain('arc')}
+                >ARC</button>
               </div>
               <input
                 className="scan-input"
@@ -533,6 +538,10 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                     className={`s-tab ${lbChain === 'base' ? 'on' : ''}`}
                     onClick={() => setLbChain('base')}
                   >Base</button>
+                  <button
+                    className={`s-tab ${lbChain === 'arc' ? 'on' : ''}`}
+                    onClick={() => setLbChain('arc')}
+                  >Arc</button>
                 </div>
               </div>
             )}
@@ -607,7 +616,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
             ) : (
               <>
                 {activity.map((item, i) => {
-                  const explorer = item.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+                  const explorer = item.chain === 'eth' ? 'etherscan.io' : item.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
                   return (
                     <div key={i} className="lb-row" style={{ cursor: item.txHash ? 'pointer' : 'default' }}
                       onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}

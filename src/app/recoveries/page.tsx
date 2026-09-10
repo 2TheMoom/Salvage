@@ -19,7 +19,7 @@ const VICTIM_SELF_RATE = 0.95
 
 interface Claim {
   claim_id: string
-  chain: 'eth' | 'base'
+  chain: 'eth' | 'base' | 'arc'
   token_address: string
   token_symbol: string | null
   finder_address: string | null
@@ -147,7 +147,7 @@ export default function RecoveriesPage() {
 
 function RecoveryRow({ claim, index }: { claim: Claim; index: number }) {
   const payout = (claim.value_usd || 0) * (claim.finder_address ? VICTIM_BROKERED_RATE : VICTIM_SELF_RATE)
-  const explorer = claim.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>

@@ -49,7 +49,8 @@ function mapRescueArgs(
   })
 }
 
-const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
+// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
 
 type RowState = 'idle' | 'signing' | 'registering' | 'registered' | 'settling' | 'settled' | 'error'
 
@@ -88,7 +89,7 @@ async function estimateBatchGas(params: {
   abi: Abi
   functionName: string
   args: readonly unknown[]
-  chainId: 1 | 8453
+  chainId: 1 | 8453 | 5042002
 }): Promise<bigint | undefined> {
   try {
     const data = encodeFunctionData({ abi: params.abi, functionName: params.functionName, args: params.args })
@@ -774,8 +775,8 @@ const OwnerClaimRow = forwardRef<RowHandle, OwnerClaimRowProps>(function OwnerCl
 
   const copyReceiverInstructions = async () => {
     if (!receiver) return
-    const chainName = chain === 'eth' ? 'Ethereum' : 'Base'
-    const explorer  = chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+    const chainName = chain === 'eth' ? 'Ethereum' : chain === 'base' ? 'Base' : 'Arc'
+    const explorer  = chain === 'eth' ? 'etherscan.io' : chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
     const text = `Recovery deposit address (Salvage claim ${claimId?.slice(0, 10)}…):
 
 ${receiver}
@@ -927,19 +928,19 @@ Verify the settlement contract yourself: https://${explorer}/address/${routerAdd
       {(registerTx || settleTx || sendTx) && (
         <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
           {registerTx && (
-            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
+            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${registerTx}`}
                target="_blank" rel="noopener noreferrer">
               Registration tx ↗
             </a>
           )}
           {sendTx && (
-            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${sendTx}`}
+            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${sendTx}`}
                target="_blank" rel="noopener noreferrer">
               Rescue tx ↗
             </a>
           )}
           {settleTx && (
-            <a className="chip-link settled" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${settleTx}`}
+            <a className="chip-link settled" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${settleTx}`}
                target="_blank" rel="noopener noreferrer">
               Settlement tx ↗
             </a>

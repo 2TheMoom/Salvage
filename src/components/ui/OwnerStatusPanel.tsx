@@ -10,7 +10,8 @@ import { Chain } from '@/types'
 import type { FinderFind, FinderClaimStatus } from '@/components/ui/FinderFindCard'
 import ShareReceiptButton from './ShareReceiptButton'
 
-const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
+// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
 
 interface OwnedContract {
   contract_address: string
@@ -98,7 +99,7 @@ export default function OwnerStatusPanel({ wallet, onViewContract }: OwnerStatus
           <div>
             <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
               {c.token_name} <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>
-                ({c.chain === 'eth' ? 'Ethereum' : 'Base'})
+                ({c.chain === 'eth' ? 'Ethereum' : c.chain === 'base' ? 'Base' : 'Arc'})
               </span>
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-2)' }}>
@@ -294,7 +295,7 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
     } catch { /* clipboard unavailable */ }
   }
 
-  const explorer = claim.chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>

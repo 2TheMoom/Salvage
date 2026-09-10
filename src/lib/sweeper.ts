@@ -3,6 +3,9 @@ import { Chain, StrandedToken } from '@/types'
 const ALCHEMY_NETWORK: Record<Chain, string> = {
   eth:  'eth-mainnet',
   base: 'base-mainnet',
+  // TODO: swap to 'arc-mainnet' once Arc's mainnet launches (Sept 16) — this
+  // is the testnet identifier, confirmed live against Alchemy's Prices API.
+  arc:  'arc-testnet',
 }
 
 // ── Known symbol map for major tokens
@@ -57,6 +60,7 @@ export const SYMBOL_MAP: Record<string, string> = {
 function getRpcUrl(chain: Chain): string {
   if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC!
   if (chain === 'base') return process.env.ALCHEMY_BASE_RPC!
+  if (chain === 'arc')  return process.env.ALCHEMY_ARC_RPC!
   throw new Error(`Unknown chain: ${chain}`)
 }
 

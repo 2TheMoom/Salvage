@@ -15,7 +15,8 @@ import {
 import { VictimFinding, Chain } from '@/types'
 import ShareReceiptButton from './ShareReceiptButton'
 
-const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
+// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
 
 interface RecoveryClaimPanelProps {
   finding: VictimFinding
@@ -331,8 +332,8 @@ export default function RecoveryClaimPanel({ finding, victimWallet, chain }: Rec
 
   const copyOwnerInstructions = async () => {
     if (!receiver) return
-    const chainName = chain === 'eth' ? 'Ethereum' : 'Base'
-    const explorer  = chain === 'eth' ? 'etherscan.io' : 'basescan.org'
+    const chainName = chain === 'eth' ? 'Ethereum' : chain === 'base' ? 'Base' : 'Arc'
+    const explorer  = chain === 'eth' ? 'etherscan.io' : chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
     const text = `Recovery deposit address (Salvage claim ${claimId?.slice(0, 10)}…):
 
 ${receiver}
@@ -522,13 +523,13 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
       {(registerTx || settleTx) && (
         <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
           {registerTx && (
-            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${registerTx}`}
+            <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${registerTx}`}
                target="_blank" rel="noopener noreferrer">
               Registration tx ↗
             </a>
           )}
           {settleTx && (
-            <a className="chip-link settled" href={`${chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'}/tx/${settleTx}`}
+            <a className="chip-link settled" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${settleTx}`}
                target="_blank" rel="noopener noreferrer">
               Settlement tx ↗
             </a>

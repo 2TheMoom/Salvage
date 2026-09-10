@@ -1,0 +1,6 @@
+{
+  "SalvageRecoveryRouter#SalvageRecoveryRouter": "0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27",
+  "SalvageBatchWrapperModule#SalvageBatchWrapper": "0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25",
+  "MockStrandedVaultTestModule#MockERC20": "0x2240792d1A9D964d238bD693fCb09586B10faEdf",
+  "MockStrandedVaultTestModule#MockStrandedVault": "0xff2605c1cFC8fF3b2c8Dfde91E72E98595676995"
+}

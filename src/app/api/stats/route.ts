@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     let totalStrandedUsd  = 0
     let strandedEthUsd    = 0
     let strandedBaseUsd   = 0
+    let strandedArcUsd    = 0
     let recoverableUsd    = 0
     let recoverableCount  = 0
 
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
       totalStrandedUsd += value
       if (row.chain === 'eth') strandedEthUsd += value
       else if (row.chain === 'base') strandedBaseUsd += value
+      else if (row.chain === 'arc') strandedArcUsd += value
       if (row.triage_status === 'recoverable' || row.triage_status === 'needs_action') {
         recoverableUsd += value
         recoverableCount++
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
         totalStrandedUsd,
         strandedEthUsd,
         strandedBaseUsd,
+        strandedArcUsd,
         recoverableUsd,
         recoverableCount,
         contractsIndexed: (data || []).length,

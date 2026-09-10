@@ -18,6 +18,7 @@ const MAX_TRIAGED        = 4      // recipient contracts triaged (Etherscan budg
 function getRpcUrl(chain: Chain): string {
   if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC!
   if (chain === 'base') return process.env.ALCHEMY_BASE_RPC!
+  if (chain === 'arc')  return process.env.ALCHEMY_ARC_RPC!
   throw new Error(`Unknown chain: ${chain}`)
 }
 

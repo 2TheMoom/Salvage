@@ -1,5 +1,6 @@
 import { ScanResult } from '@/types'
 import type { ResolvedIdentity } from '@/lib/identity'
+import { explorerUrl } from '@/lib/utils'
 
 function formatUsd(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
@@ -15,9 +16,8 @@ function greetingFor(identity?: ResolvedIdentity): string {
 }
 
 export function generateOutreachTemplate(result: ScanResult, ownerIdentity?: ResolvedIdentity): string {
-  const chainName    = result.chain === 'eth' ? 'Ethereum' : 'Base'
-  const explorerBase = result.chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'
-  const explorerLink = `${explorerBase}/address/${result.contractAddress}`
+  const chainName    = result.chain === 'eth' ? 'Ethereum' : result.chain === 'base' ? 'Base' : 'Arc'
+  const explorerLink = explorerUrl(result.contractAddress, result.chain)
   const totalUsd     = result.totalStrandedUsd ?? 0
   const feeUsd       = result.finderFeeUsd     ?? 0
 

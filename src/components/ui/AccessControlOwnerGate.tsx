@@ -6,7 +6,8 @@ import { zeroHash, type Abi } from 'viem'
 import { Chain, StrandedToken, RescueAbiEntry } from '@/types'
 import OwnerClaimPanel from './OwnerClaimPanel'
 
-const CHAIN_IDS: Record<Chain, 1 | 8453> = { eth: 1, base: 8453 }
+// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
 
 interface AccessControlOwnerGateProps {
   contractAddress: string

@@ -9,8 +9,11 @@ export function truncateAddress(address: string, chars = 4): string {
   return `${address.slice(0, 2 + chars)}…${address.slice(-chars)}`
 }
 
-// Etherscan/Basescan URL for a given chain
-export function explorerUrl(address: string, chain: 'eth' | 'base'): string {
-  const base = chain === 'eth' ? 'https://etherscan.io' : 'https://basescan.org'
+// Etherscan/Basescan/Arcscan URL for a given chain
+// TODO: swap to mainnet Arcscan URL once published (Sept 16 launch)
+export function explorerUrl(address: string, chain: 'eth' | 'base' | 'arc'): string {
+  const base = chain === 'eth' ? 'https://etherscan.io'
+    : chain === 'base' ? 'https://basescan.org'
+    : 'https://testnet.arcscan.app'
   return `${base}/address/${address}`
 }

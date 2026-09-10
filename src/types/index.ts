@@ -1,5 +1,5 @@
 // ── Chain
-export type Chain = 'eth' | 'base'
+export type Chain = 'eth' | 'base' | 'arc'
 
 // ── Triage status
 export type TriageStatus = 'recoverable' | 'needs_action' | 'unrecoverable'

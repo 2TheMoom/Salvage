@@ -55,7 +55,7 @@ function renderCard(params: {
   contractAddress?: string
   chain: string
 }) {
-  const explorer = params.chain === 'eth' ? 'Ethereum' : 'Base'
+  const explorer = params.chain === 'eth' ? 'Ethereum' : params.chain === 'base' ? 'Base' : 'Arc'
   return new ImageResponse(
     (
       <div style={{

@@ -7,7 +7,11 @@ const RESCUE_SIGNATURES = [
 ]
 
 const ETHERSCAN_BASE = 'https://api.etherscan.io/v2/api'
-const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453 }
+// Arc isn't in Etherscan's V2 chainlist — Arcscan (Blockscout) is its own
+// separate explorer, routed to directly in etherscanFetch() below.
+const ARCSCAN_BASE = 'https://testnet.arcscan.app/api' // TODO: swap to mainnet Arcscan URL once published (Sept 16 launch)
+// TODO: swap to Arc's confirmed mainnet chain ID once published — currently testnet (5042002)
+const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042002 }
 
 // ── Proxy implementation storage slots
 // EIP-1967:  keccak256("eip1967.proxy.implementation") - 1
@@ -26,6 +30,7 @@ const SEL_OWNER  = '0x8da5cb5b' // owner()
 function getRpcUrl(chain: Chain): string {
   if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC!
   if (chain === 'base') return process.env.ALCHEMY_BASE_RPC!
+  if (chain === 'arc')  return process.env.ALCHEMY_ARC_RPC!
   throw new Error(`Unknown chain: ${chain}`)
 }
 
@@ -172,8 +177,14 @@ async function fetchProxyImplementation(
 async function etherscanFetch(
   chain: Chain, params: string, attempts = 4
 ): Promise<Record<string, unknown> | null> {
-  const chainId = CHAIN_IDS[chain]
-  const url = `${ETHERSCAN_BASE}?chainid=${chainId}&${params}&apikey=${process.env.ETHERSCAN_API_KEY}`
+  // Arc isn't on Etherscan's V2 chainlist (confirmed directly against
+  // api.etherscan.io/v2/chainlist) — Arcscan is a separate Blockscout
+  // instance, but its legacy API is deliberately Etherscan-compatible
+  // (same {status,message,result} shape, same module/action params), no
+  // chainid param and no API key needed.
+  const url = chain === 'arc'
+    ? `${ARCSCAN_BASE}?${params}`
+    : `${ETHERSCAN_BASE}?chainid=${CHAIN_IDS[chain]}&${params}&apikey=${process.env.ETHERSCAN_API_KEY}`
 
   for (let i = 0; i < attempts; i++) {
     try {
