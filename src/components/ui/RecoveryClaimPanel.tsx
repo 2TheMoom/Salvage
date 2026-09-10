@@ -14,6 +14,7 @@ import {
 } from '@/lib/contracts'
 import { VictimFinding, Chain } from '@/types'
 import ShareReceiptButton from './ShareReceiptButton'
+import PermissionlessRescueButton from './PermissionlessRescueButton'
 
 // TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
 const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
@@ -482,8 +483,17 @@ Verify the settlement contract yourself: https://${explorer}/address/${RECOVERY_
           <div style={{ marginBottom: '8px' }}>
             {funded
               ? <span style={{ color: 'var(--green)' }}>● Receiver funded — ready to settle</span>
-              : 'Share this with the contract owner. Once they rescue the tokens here, anyone can settle.'}
+              : finding.permissionlessRescue
+                ? 'No owner needed — recover it directly below.'
+                : 'Share this with the contract owner. Once they rescue the tokens here, anyone can settle.'}
           </div>
+
+          {!funded && finding.permissionlessRescue && (
+            <PermissionlessRescueButton
+              finding={finding} receiver={receiver} chain={chain}
+              onSent={refetchBalance}
+            />
+          )}
 
           {funded && blacklistStatus === 'blocked' && (
             <div style={{

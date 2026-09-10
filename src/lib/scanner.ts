@@ -1,4 +1,13 @@
-import { Chain, TriageCheck, TriageStatus, ScanResult, RescueAbiEntry } from '@/types'
+import { Chain, TriageCheck, TriageStatus, ScanResult, RescueAbiEntry, PermissionlessRescue } from '@/types'
+import { probeUniswapV2Pool } from './pool'
+
+// Never read from the target's own ABI — always this fixed, known-safe
+// shape, matching pool.ts's own comment on why name-matching alone isn't
+// verification.
+const SKIM_ABI_ENTRY: RescueAbiEntry = {
+  name: 'skim', type: 'function', stateMutability: 'nonpayable',
+  inputs: [{ name: 'to', type: 'address' }],
+}
 
 const RESCUE_SIGNATURES = [
   'rescueERC20', 'recoverERC20', 'withdrawToken', 'rescueTokens',
@@ -353,13 +362,17 @@ function truncAddr(addr: string): string {
 // ═══════════════════════════════════════════════════════════
 
 export function buildTriage(params: {
-  isVerified:      boolean
-  rescueFound:     boolean
-  rescueName?:     string
-  hasOwner:        boolean
-  isUpgradeable:   boolean
-  proxyType?:      string
-  implementation?: string
+  isVerified:        boolean
+  rescueFound:       boolean
+  rescueName?:       string
+  hasOwner:          boolean
+  isUpgradeable:     boolean
+  proxyType?:        string
+  implementation?:   string
+  // Set only after cryptographic CREATE2 verification (pool.ts) — a
+  // Uniswap-V2-style pool's skim(), open to anyone, no owner check needed.
+  permissionlessFound?: boolean
+  permissionlessDexName?: string
 }): { checks: TriageCheck[]; status: TriageStatus } {
   const checks: TriageCheck[] = []
 
@@ -373,17 +386,27 @@ export function buildTriage(params: {
       : 'Cannot read ABI — triage limited. Ask the team to verify.',
   })
 
-  checks.push({
-    status: params.rescueFound ? 'pass' : 'fail',
-    label:  params.rescueFound
-      ? `${params.rescueName}() found in ABI`
-      : 'No rescue function detected',
-    detail: params.rescueFound
-      ? 'Owner can call this directly — no upgrade needed to recover'
-      : 'No known rescue function in ABI — recovery requires upgrade or governance',
-  })
+  if (params.rescueFound) {
+    checks.push({
+      status: 'pass',
+      label:  `${params.rescueName}() found in ABI`,
+      detail: 'Owner can call this directly — no upgrade needed to recover',
+    })
+  } else if (params.permissionlessFound) {
+    checks.push({
+      status: 'pass',
+      label:  `skim() found — ${params.permissionlessDexName ?? 'a known pool'}`,
+      detail: 'Anyone can call this directly — a permissionless pool function, no owner or governance needed',
+    })
+  } else {
+    checks.push({
+      status: 'fail',
+      label:  'No rescue function detected',
+      detail: 'No known rescue function in ABI — recovery requires upgrade or governance',
+    })
+  }
 
-  if (!params.rescueFound) {
+  if (!params.rescueFound && !params.permissionlessFound) {
     checks.push({
       status: params.isUpgradeable ? 'warn' : 'fail',
       label:  params.isUpgradeable
@@ -395,16 +418,28 @@ export function buildTriage(params: {
     })
   }
 
-  checks.push({
-    status: params.hasOwner ? 'pass' : 'fail',
-    label:  params.hasOwner ? 'Access control present' : 'No owner or access control',
-    detail: params.hasOwner
-      ? 'owner() or role-based access detected — a responsible party exists'
-      : 'No owner detected — may be fully decentralized or renounced',
-  })
+  if (params.hasOwner) {
+    checks.push({
+      status: 'pass',
+      label:  'Access control present',
+      detail: 'owner() or role-based access detected — a responsible party exists',
+    })
+  } else if (params.permissionlessFound) {
+    checks.push({
+      status: 'pass',
+      label:  'No owner needed',
+      detail: 'skim() is open to any caller by design — this is how the pool is meant to work, not a gap',
+    })
+  } else {
+    checks.push({
+      status: 'fail',
+      label:  'No owner or access control',
+      detail: 'No owner detected — may be fully decentralized or renounced',
+    })
+  }
 
   let status: TriageStatus
-  if (params.rescueFound) {
+  if (params.rescueFound || params.permissionlessFound) {
     status = 'recoverable'
   } else if (params.isUpgradeable && params.hasOwner) {
     status = 'needs_action'
@@ -440,11 +475,18 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     }
   }
 
-  // ── Step 1: On-chain identity + proxy detection (RPC — parallel, no rate limits)
-  const [identity, proxyInfo] = await Promise.all([
+  // ── Step 1: On-chain identity + proxy detection + pool probe (RPC — parallel, no rate limits)
+  const [identity, proxyInfo, poolProbe] = await Promise.all([
     fetchOnchainIdentity(normalizedAddress, chain),
     fetchProxyImplementation(normalizedAddress, chain),
+    probeUniswapV2Pool(normalizedAddress, chain),
   ])
+  const permissionlessRescue: PermissionlessRescue | undefined = poolProbe
+    ? {
+        functionName: 'skim', abiEntry: SKIM_ABI_ENTRY, dexName: poolProbe.dexName,
+        token0: poolProbe.token0, token1: poolProbe.token1,
+      }
+    : undefined
 
   // ── Step 2: Etherscan calls — strictly SERIALIZED with spacing to
   //    stay inside the free-tier rate limit. Never fire these in parallel.
@@ -498,6 +540,8 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     isVerified:      isVerified || !!implAbi,
     rescueFound, rescueName, hasOwner, isUpgradeable, proxyType,
     implementation:  implAbi ? proxyInfo.implementation : undefined,
+    permissionlessFound:    !!permissionlessRescue,
+    permissionlessDexName:  permissionlessRescue?.dexName,
   })
 
   // Only worth reading if the ABI actually exposes an owner()-shaped
@@ -517,6 +561,7 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
     ownerAddress,
     accessControlRoles: accessControlRoles.length > 0 ? accessControlRoles : undefined,
     rescueAbiEntry,
+    permissionlessRescue,
     triageStatus:          status,
     checks,
   }

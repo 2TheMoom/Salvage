@@ -21,6 +21,22 @@ export interface RescueAbiEntry {
   inputs: { name: string; type: string }[]
 }
 
+// ── A rescue path that needs no owner or role at all — e.g. Uniswap V2's
+// skim(address), callable by literally anyone. Populated only after
+// cryptographic verification (CREATE2 address match against a trusted,
+// audited factory) — never from name-matching an arbitrary contract's own
+// declared ABI. abiEntry is always the hardcoded, known-safe shape.
+export interface PermissionlessRescue {
+  functionName: 'skim'
+  abiEntry: RescueAbiEntry
+  dexName: string
+  // skim() sweeps BOTH pool tokens, not just the one a claim is for —
+  // needed so the UI can honestly disclose the other token's excess before
+  // the button is ever clickable.
+  token0: string
+  token1: string
+}
+
 // ── Full scan result
 export interface ScanResult {
   contractAddress: string
@@ -37,6 +53,7 @@ export interface ScanResult {
   // since AccessControl has no single canonical owner to resolve server-side.
   accessControlRoles?: string[]
   rescueAbiEntry?: RescueAbiEntry
+  permissionlessRescue?: PermissionlessRescue
   triageStatus: TriageStatus
   checks: TriageCheck[]
   // M2: populated later
@@ -64,6 +81,11 @@ export interface ScanApiResponse {
 }
 // ── Victim scan (tokens mistakenly sent to contract addresses)
 
+// Every verified candidate is, by construction, drawn from the seed set
+// victim.ts builds (SYMBOL_MAP + the wallet's own transfer history + the DEX
+// registry) — there's no "unknown" case given how candidates are seeded.
+export type RecipientKind = 'self' | 'other_token' | 'known_pool' | 'known_router'
+
 export interface VictimFinding {
   txHash: string
   timestamp?: string
@@ -74,8 +96,10 @@ export interface VictimFinding {
   valueUsd: number
   recipientContract: string
   recipientName?: string
-  sentToSelf: boolean          // classic: token sent to its own contract
-  contractStillHolds: string   // recipient's current balance of that token
+  recipientKind: RecipientKind   // replaces the old sentToSelf boolean
+  dexName?: string               // populated for known_pool/known_router
+  permissionlessRescue?: PermissionlessRescue
+  contractStillHolds: string     // recipient's current balance of that token
   triageStatus?: TriageStatus
   rescueFunction?: string
 }

@@ -43,6 +43,22 @@ function statusChip(f: VictimFinding) {
 
 function buildVictimOutreach(f: VictimFinding, chain: string): string {
   const chainName = chain === 'eth' ? 'Ethereum' : chain === 'base' ? 'Base' : 'Arc'
+
+  // A pool with a permissionless rescue has no owner to email — "reach out
+  // to the contract owner" would be actively wrong here, not just unhelpful.
+  if (f.permissionlessRescue) {
+    return `Subject: Stranded ${f.amount} ${f.tokenSymbol} — recoverable without anyone's cooperation
+
+I mistakenly sent ${formatAmount(f.amount, f.tokenSymbol)} (${formatUsd(f.valueUsd)}) directly to the ${f.dexName ?? 'DEX'} pool at ${f.recipientContract} on ${chainName}, instead of going through its router.
+
+This pool exposes ${f.permissionlessRescue.functionName}() — a permissionless function, callable by anyone, no owner or governance approval needed. Recoverable directly via Salvage.
+
+Transaction: ${f.txHash}
+${f.timestamp ? `Date: ${f.timestamp.slice(0, 10)}` : ''}
+
+Found via Salvage — usesalvage.xyz`
+  }
+
   const rescue = f.rescueFunction
     ? `Your contract's ABI includes ${f.rescueFunction}(), so the tokens can be returned directly by the contract owner — no upgrade needed.`
     : `We understand recovery may require action from the contract owner or governance.`
@@ -63,9 +79,23 @@ I'd be grateful if you could help return these funds. Happy to verify ownership 
 Found via Salvage — usesalvage.xyz`
 }
 
+function recipientBadge(f: VictimFinding): { text: string; color: string; bg: string; border: string } | null {
+  if (f.recipientKind === 'self') {
+    return { text: "token's own contract", color: 'var(--eth)', bg: 'var(--eth-soft)', border: 'var(--eth-border)' }
+  }
+  if (f.recipientKind === 'known_pool') {
+    return { text: `${f.dexName ?? 'DEX'} pool`, color: 'var(--green)', bg: 'var(--green-soft)', border: 'var(--green-border)' }
+  }
+  if (f.recipientKind === 'known_router') {
+    return { text: `${f.dexName ?? 'DEX'} router`, color: 'var(--amber)', bg: 'var(--amber-soft)', border: 'var(--amber-border)' }
+  }
+  return null
+}
+
 function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; chain: string; victimWallet: string }) {
   const [copied, setCopied] = useState(false)
   const chip = statusChip(finding)
+  const badge = recipientBadge(finding)
 
   const handleCopy = async () => {
     try {
@@ -126,13 +156,22 @@ function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; 
           <span style={{ color: 'var(--text)' }}>
             {finding.recipientName || 'Unknown Contract'} · {truncateAddress(finding.recipientContract)}
           </span>
-          {finding.sentToSelf && (
+          {badge && (
             <span style={{
               marginLeft: '6px', padding: '1px 6px', borderRadius: '4px',
-              background: 'var(--eth-soft)', border: '1px solid var(--eth-border)',
-              color: 'var(--eth)', fontSize: '0.58rem', fontWeight: 600,
+              background: badge.bg, border: `1px solid ${badge.border}`,
+              color: badge.color, fontSize: '0.58rem', fontWeight: 600,
             }}>
-              token&apos;s own contract
+              {badge.text}
+            </span>
+          )}
+          {finding.permissionlessRescue && (
+            <span style={{
+              marginLeft: '6px', padding: '1px 6px', borderRadius: '4px',
+              background: 'var(--green-soft)', border: '1px solid var(--green-border)',
+              color: 'var(--green)', fontSize: '0.58rem', fontWeight: 600,
+            }}>
+              no owner needed
             </span>
           )}
         </div>
@@ -302,7 +341,7 @@ export default function VictimResultCard({ result }: VictimResultCardProps) {
             color: 'var(--text-2)', lineHeight: 1.7,
           }}>
             ✓ No mistaken transfers detected.<br />
-            This wallet has never sent tokens directly to a token contract.
+            This wallet has never sent tokens directly to a token contract, a known DEX pool, or a known DEX router.
           </div>
         )}
       </div>

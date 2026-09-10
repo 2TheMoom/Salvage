@@ -1,14 +1,17 @@
-import { Chain, VictimFinding, VictimScanResult, TriageStatus } from '@/types'
+import { Chain, VictimFinding, VictimScanResult, TriageStatus, RecipientKind, PermissionlessRescue } from '@/types'
 import { scanContract, detectRescueFunction, fetchAbi } from '@/lib/scanner'
 import { fetchPricesByAddress, getTokenMetadata, formatBalance, SYMBOL_MAP } from '@/lib/sweeper'
+import { poolAddressesForChain, routerAddressesForChain, lookupDexEntry } from '@/lib/dexRegistry'
 
 // ── Victim scan: find tokens a wallet mistakenly sent to contract addresses.
 //
-// v1 targets the unambiguous, highest-signal mistake: a DIRECT `transfer()`
-// call whose recipient is itself an ERC-20 token contract — including the
-// classic case of sending a token to its own contract. Swaps and router
-// interactions are excluded by construction (their tx.to is the router,
-// not the token, and the recipient is decoded from a direct transfer input).
+// Targets the unambiguous, highest-signal mistake: a DIRECT `transfer()`
+// call whose recipient is itself an ERC-20 token contract, a known DEX pool,
+// or a known DEX router — the classic "sent it to a contract that doesn't
+// just accept a raw transfer" family of mistakes. Swaps and router-mediated
+// interactions are excluded by construction (their tx.to is the router, not
+// the token, and the recipient is decoded from a direct transfer input) —
+// this only catches someone bypassing the router entirely.
 
 const TRANSFER_SELECTOR = '0xa9059cbb'
 const MAX_TRANSFER_PAGES = 3      // up to ~3000 outgoing transfers
@@ -121,18 +124,25 @@ export async function scanVictimWallet(
   const transfers = await getOutgoingTransfers(wallet, chain)
 
   // Step 2: candidate set — recipient is a token contract the wallet has
-  // interacted with, the transferred token's own contract, or any KNOWN
-  // major token contract (SYMBOL_MAP). Without the known-token seed, a
-  // send to a token the wallet never transferred before would be invisible.
-  const tokenContracts = new Set<string>(Object.keys(SYMBOL_MAP))
+  // interacted with, the transferred token's own contract, any KNOWN major
+  // token contract (SYMBOL_MAP), or a known DEX pool/router. Without these
+  // seeds, a send to an address the wallet never independently touched
+  // before (true for essentially every pool/router mis-send — the whole
+  // point of the mistake is targeting an address the user DIDN'T know to
+  // treat carefully) would be invisible. This is the seam that determines
+  // detection completeness — see dexRegistry.ts's own comment for the v2
+  // plan to catch pools/routers beyond this hardcoded majors list.
+  const flaggableRecipients = new Set<string>(Object.keys(SYMBOL_MAP))
   for (const t of transfers) {
     const addr = t.rawContract?.address?.toLowerCase()
-    if (addr) tokenContracts.add(addr)
+    if (addr) flaggableRecipients.add(addr)
   }
+  for (const a of poolAddressesForChain(chain))   flaggableRecipients.add(a)
+  for (const a of routerAddressesForChain(chain)) flaggableRecipients.add(a)
 
   const candidates = transfers.filter(t => {
     const to = t.to?.toLowerCase()
-    return !!to && tokenContracts.has(to)
+    return !!to && flaggableRecipients.has(to)
   }).slice(0, MAX_FINDINGS)
 
   // Step 3: verify each candidate — direct transfer() whose CALLDATA
@@ -166,6 +176,7 @@ export async function scanVictimWallet(
   const uniqueRecipients = [...new Set(verified.map(t => t.to!.toLowerCase()))]
   const triageMap: Record<string, {
     status: TriageStatus; rescueName?: string; name?: string
+    permissionlessRescue?: PermissionlessRescue
   }> = {}
 
   for (const recipient of uniqueRecipients.slice(0, MAX_TRIAGED)) {
@@ -183,6 +194,7 @@ export async function scanVictimWallet(
         status:     scan.triageStatus,
         rescueName,
         name:       scan.tokenName,
+        permissionlessRescue: scan.permissionlessRescue,
       }
     } catch { /* leave untriaged */ }
   }
@@ -201,6 +213,13 @@ export async function scanVictimWallet(
       ? formatBalance(heldRaw, meta.decimals)
       : '?'
 
+    const dexEntry = lookupDexEntry(recipient, chain)
+    const recipientKind: RecipientKind =
+      recipient === tokenAddr    ? 'self'
+      : dexEntry?.kind === 'pool'   ? 'known_pool'
+      : dexEntry?.kind === 'router' ? 'known_router'
+      : 'other_token'
+
     findings.push({
       txHash:             t.hash,
       timestamp:          t.metadata?.blockTimestamp,
@@ -211,7 +230,9 @@ export async function scanVictimWallet(
       valueUsd:           amountNum * priceUsd,
       recipientContract:  recipient,
       recipientName:      triageMap[recipient]?.name,
-      sentToSelf:         recipient === tokenAddr,
+      recipientKind,
+      dexName:            dexEntry?.dexName,
+      permissionlessRescue: triageMap[recipient]?.permissionlessRescue,
       contractStillHolds: held,
       triageStatus:       triageMap[recipient]?.status,
       rescueFunction:     triageMap[recipient]?.rescueName,

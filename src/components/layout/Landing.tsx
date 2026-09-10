@@ -30,6 +30,10 @@ const FAQ_ITEMS = [
     a: 'Register the find, free and gasless. If the owner later recovers those tokens through Salvage, 7% routes to your wallet automatically the moment they settle — no need to contact them yourself, though Salvage can generate an outreach message if you want to speed it along.',
   },
   {
+    q: 'I sent tokens straight to a DEX pool or router by mistake — is that even recoverable?',
+    a: "Often, yes — and it's the one case that needs no owner at all. Salvage verifies the pool cryptographically (not by trusting its declared ABI) and, if it's a genuine Uniswap V2 pair, exposes its permissionless skim() function directly in your claim panel. Anyone can call it, no outreach required.",
+  },
+  {
     q: 'What if my wallet is blacklisted by USDC or USDT?',
     a: 'Salvage checks this before settlement is ever offered: if the victim, finder, or protocol address is blacklisted by that token’s own issuer, settling would revert and permanently strand the funds, so the Settle button simply won’t appear until that’s resolved — better than risking a stuck claim.',
   },
