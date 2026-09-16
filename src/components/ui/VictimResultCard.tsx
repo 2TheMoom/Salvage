@@ -231,7 +231,7 @@ function FindingRow({ finding, chain, victimWallet }: { finding: VictimFinding; 
 function explorerTxUrl(txHash: string, chain: string): string {
   const base = chain === 'eth' ? 'https://etherscan.io'
     : chain === 'base' ? 'https://basescan.org'
-    : 'https://testnet.arcscan.app'
+    : 'https://explorer.arc.io'
   return `${base}/tx/${txHash}`
 }
 

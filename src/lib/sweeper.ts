@@ -3,9 +3,9 @@ import { Chain, StrandedToken } from '@/types'
 const ALCHEMY_NETWORK: Record<Chain, string> = {
   eth:  'eth-mainnet',
   base: 'base-mainnet',
-  // TODO: swap to 'arc-mainnet' once Arc's mainnet launches (Sept 16) — this
-  // is the testnet identifier, confirmed live against Alchemy's Prices API.
-  arc:  'arc-testnet',
+  // Confirmed live against Alchemy's Prices API: a real price came back for
+  // Arc mainnet's own USDC address (0x3600...0000, per Circle's docs).
+  arc:  'arc-mainnet',
 }
 
 // ── Known symbol map for major tokens

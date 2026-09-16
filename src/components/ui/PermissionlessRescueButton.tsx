@@ -7,8 +7,7 @@ import { encodeFunctionData, type Abi } from 'viem'
 import { config } from '@/lib/wagmi'
 import { VictimFinding, Chain } from '@/types'
 
-// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
-const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042> = { eth: 1, base: 8453, arc: 5042 }
 
 interface PermissionlessRescueButtonProps {
   finding: VictimFinding
@@ -112,7 +111,7 @@ export default function PermissionlessRescueButton({ finding, receiver, chain, o
       </button>
       {sendTx && (
         <div style={{ marginTop: '6px' }}>
-          <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://testnet.arcscan.app'}/tx/${sendTx}`}
+          <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://explorer.arc.io'}/tx/${sendTx}`}
              target="_blank" rel="noopener noreferrer">
             Rescue tx ↗
           </a>

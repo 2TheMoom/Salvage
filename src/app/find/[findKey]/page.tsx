@@ -56,7 +56,7 @@ const STATUS_EXPLAIN: Record<ClaimStatus, string> = {
 }
 
 function TokenRow({ token, chain }: { token: TokenDetail; chain: string }) {
-  const explorer = chain === 'eth' ? 'etherscan.io' : chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
+  const explorer = chain === 'eth' ? 'etherscan.io' : chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
   const copy = STATUS_COPY[token.claimStatus]
   return (
     <div style={{
@@ -121,7 +121,7 @@ export default function FindDetailPage() {
       .finally(() => setLoading(false))
   }, [findKey])
 
-  const explorer  = find?.chain === 'eth' ? 'etherscan.io' : find?.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
+  const explorer  = find?.chain === 'eth' ? 'etherscan.io' : find?.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
   const chainName = find?.chain === 'eth' ? 'Ethereum' : find?.chain === 'base' ? 'Base' : 'Arc'
   const overall   = find ? STATUS_COPY[find.claimStatus] : null
   // The registration is for the scanned contract itself, not whatever

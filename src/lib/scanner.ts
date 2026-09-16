@@ -16,11 +16,15 @@ const RESCUE_SIGNATURES = [
 ]
 
 const ETHERSCAN_BASE = 'https://api.etherscan.io/v2/api'
-// Arc isn't in Etherscan's V2 chainlist — Arcscan (Blockscout) is its own
-// separate explorer, routed to directly in etherscanFetch() below.
-const ARCSCAN_BASE = 'https://testnet.arcscan.app/api' // TODO: swap to mainnet Arcscan URL once published (Sept 16 launch)
-// TODO: swap to Arc's confirmed mainnet chain ID once published — currently testnet (5042002)
-const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042002 }
+// Arc isn't in Etherscan's V2 chainlist — "Arcscan" (a third-party Blockscout
+// instance at testnet.arcscan.app) filled that gap for testnet. Circle's own
+// mainnet docs (docs.arc.io) reference only https://explorer.arc.io and never
+// mention Arcscan branding, and neither arcscan.app nor mainnet.arcscan.app
+// resolve — so there's no confirmed mainnet equivalent yet. Left unset
+// (rather than guessed) until a real mainnet Etherscan-legacy-shaped API is
+// confirmed; etherscanFetch() below fails closed to "not verified" for 'arc'.
+const ARCSCAN_BASE: string | null = null
+const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042 }
 
 // ── Proxy implementation storage slots
 // EIP-1967:  keccak256("eip1967.proxy.implementation") - 1
@@ -187,10 +191,11 @@ async function etherscanFetch(
   chain: Chain, params: string, attempts = 4
 ): Promise<Record<string, unknown> | null> {
   // Arc isn't on Etherscan's V2 chainlist (confirmed directly against
-  // api.etherscan.io/v2/chainlist) — Arcscan is a separate Blockscout
-  // instance, but its legacy API is deliberately Etherscan-compatible
-  // (same {status,message,result} shape, same module/action params), no
-  // chainid param and no API key needed.
+  // api.etherscan.io/v2/chainlist), and ARCSCAN_BASE has no confirmed
+  // mainnet value yet (see comment above) — fail closed rather than guess
+  // an API URL for a security-relevant ABI-verification call.
+  if (chain === 'arc' && !ARCSCAN_BASE) return null
+
   const url = chain === 'arc'
     ? `${ARCSCAN_BASE}?${params}`
     : `${ETHERSCAN_BASE}?chainid=${CHAIN_IDS[chain]}&${params}&apikey=${process.env.ETHERSCAN_API_KEY}`

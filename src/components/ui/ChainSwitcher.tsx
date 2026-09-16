@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 
-// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
 const NETWORKS = [
   { chainId: 1,       name: 'Ethereum',     icon: '/chain-icons/ethereum.svg' },
   { chainId: 8453,    name: 'Base',         icon: '/chain-icons/base.svg' },
-  { chainId: 5042002, name: 'Arc Testnet',  icon: '/chain-icons/arc.png' },
+  { chainId: 5042, name: 'Arc',  icon: '/chain-icons/arc.png' },
 ] as const
 
 // Lets a connected wallet switch networks proactively from the dashboard,

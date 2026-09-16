@@ -10,8 +10,7 @@ import { Chain } from '@/types'
 import type { FinderFind, FinderClaimStatus } from '@/components/ui/FinderFindCard'
 import ShareReceiptButton from './ShareReceiptButton'
 
-// TODO: swap 5042002 (Arc Testnet) for Arc's mainnet chain ID once launched (Sept 16)
-const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042002> = { eth: 1, base: 8453, arc: 5042002 }
+const CHAIN_IDS: Record<Chain, 1 | 8453 | 5042> = { eth: 1, base: 8453, arc: 5042 }
 
 interface OwnedContract {
   contract_address: string
@@ -295,7 +294,7 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
     } catch { /* clipboard unavailable */ }
   }
 
-  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
+  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>

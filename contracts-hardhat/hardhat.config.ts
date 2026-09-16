@@ -30,16 +30,24 @@ export default defineConfig({
       accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
       chainId: 1,
     },
-    // Phase 0 of Arc support — testnet dry run before the Sept 16 mainnet
-    // launch. Arc's own docs warn that local EVM simulators (Hardhat's
-    // built-in network, Foundry's anvil) can't reproduce Arc-specific
-    // behavior (native-USDC gas, blocklist enforcement, etc.), so this is
-    // the network everything actually needs to be exercised against.
+    // Kept for future dev-testing dry runs — Arc's own docs warn that local
+    // EVM simulators (Hardhat's built-in network, Foundry's anvil) can't
+    // reproduce Arc-specific behavior (native-USDC gas, blocklist
+    // enforcement, etc.), so testnet is still the right place to rehearse
+    // anything new before it touches mainnet.
     arcTestnet: {
       type: "http",
       url: configVariable("ALCHEMY_ARC_TESTNET_RPC"),
       accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
       chainId: 5042002,
+    },
+    // Arc mainnet — live Sept 16, 2026. Chain ID, RPC confirmed directly
+    // against Circle's own docs (docs.arc.io/arc/references/connect-to-arc.md).
+    arc: {
+      type: "http",
+      url: configVariable("ALCHEMY_ARC_MAINNET_RPC"),
+      accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
+      chainId: 5042,
     },
   },
 });

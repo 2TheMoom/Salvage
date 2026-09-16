@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi'
 import { mainnet, base } from 'wagmi/chains'
-import { arcTestnet } from '@/lib/chains'
+import { arc } from '@/lib/chains'
 import { injected, coinbaseWallet, walletConnect } from '@wagmi/connectors'
 
 // Needed for mobile browser users with no extension and no Coinbase Wallet
@@ -9,8 +9,7 @@ import { injected, coinbaseWallet, walletConnect } from '@wagmi/connectors'
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 
 export const config = createConfig({
-  // TODO: swap arcTestnet for Arc's mainnet chain once launched (Sept 16)
-  chains: [mainnet, base, arcTestnet],
+  chains: [mainnet, base, arc],
   connectors: [
     injected(),
     coinbaseWallet({ appName: 'Salvage' }),
@@ -30,6 +29,6 @@ export const config = createConfig({
   transports: {
     [mainnet.id]:    http(process.env.NEXT_PUBLIC_ALCHEMY_ETH_RPC),
     [base.id]:       http(process.env.NEXT_PUBLIC_ALCHEMY_BASE_RPC),
-    [arcTestnet.id]: http(process.env.NEXT_PUBLIC_ALCHEMY_ARC_RPC),
+    [arc.id]:        http(process.env.NEXT_PUBLIC_ALCHEMY_ARC_RPC),
   },
 })

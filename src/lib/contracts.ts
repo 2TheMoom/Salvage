@@ -1,6 +1,6 @@
 import { keccak256, encodePacked, createPublicClient, http, zeroAddress } from 'viem'
 import { mainnet, base } from 'viem/chains'
-import { arcTestnet } from '@/lib/chains'
+import { arc } from '@/lib/chains'
 import { Chain } from '@/types'
 
 // Contract addresses — same on both chains
@@ -140,8 +140,8 @@ export const USDC_ABI = [
 export const RECOVERY_ROUTER_ADDRESS: Record<number, `0x${string}`> = {
   1:    '0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25', // ETH mainnet
   8453: '0x2240792d1A9D964d238bD693fCb09586B10faEdf', // Base mainnet
-  // Arc Testnet — TODO: swap to the mainnet deploy address once launched (Sept 16)
-  5042002: '0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27',
+  // Arc mainnet — deployed and independently verified (bytecode + protocolFeeRecipient()/owner() read live) 2026-09-16
+  5042: '0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27',
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -154,8 +154,8 @@ export const RECOVERY_ROUTER_ADDRESS: Record<number, `0x${string}`> = {
 export const BATCH_WRAPPER_ADDRESS: Record<number, `0x${string}`> = {
   1:    '0xff2605c1cFC8fF3b2c8Dfde91E72E98595676995', // ETH mainnet
   8453: '0xAe2A4E0f19300eBAA8D9408210F941A771103690', // Base mainnet
-  // Arc Testnet — TODO: swap to the mainnet deploy address once launched (Sept 16)
-  5042002: '0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25',
+  // Arc mainnet — deployed and independently verified (bytecode + router() read live) 2026-09-16
+  5042: '0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25',
 }
 
 // Mirrors the contract's own MAX_BATCH_SIZE constant — kept in sync here
@@ -301,8 +301,7 @@ export function contractScanLossTxHash(contractAddress: string): `0x${string}` {
   ))
 }
 
-// TODO: swap to Arc's confirmed mainnet chain ID once published — currently testnet (5042002)
-const CHAIN_ID: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042002 }
+const CHAIN_ID: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042 }
 
 const CLAIM_RPC_URL: Record<Chain, string | undefined> = {
   eth:  process.env.ALCHEMY_ETH_RPC,
@@ -310,8 +309,8 @@ const CLAIM_RPC_URL: Record<Chain, string | undefined> = {
   arc:  process.env.ALCHEMY_ARC_RPC,
 }
 
-const VIEM_CHAIN: Record<Chain, typeof mainnet | typeof base | typeof arcTestnet> = {
-  eth: mainnet, base, arc: arcTestnet,
+const VIEM_CHAIN: Record<Chain, typeof mainnet | typeof base | typeof arc> = {
+  eth: mainnet, base, arc,
 }
 
 export function getServerPublicClient(chain: Chain) {

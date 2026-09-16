@@ -58,7 +58,7 @@ export default function FinderFindCard({ find, index }: { find: FinderFind; inde
   const [expanded, setExpanded]       = useState(false)
   const [visibleCount, setVisibleCount] = useState(TOKEN_REVEAL_CHUNK)
   const statusCopy = FINDER_STATUS_COPY[find.claimStatus]
-  const explorer = find.chain === 'eth' ? 'etherscan.io' : find.chain === 'base' ? 'basescan.org' : 'testnet.arcscan.app'
+  const explorer = find.chain === 'eth' ? 'etherscan.io' : find.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
   const multiple = find.tokens.length > 1
   const earnedUsd = find.claimStatus === 'settled_for_you' && find.valueUsd != null
     ? find.valueUsd * FINDER_FEE_RATE
