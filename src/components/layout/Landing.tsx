@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Which chains are supported?',
-    a: 'Ethereum and Base today, with Circle’s Arc mainnet planned shortly after it launches this summer — same router logic, just a new chain config.',
+    a: 'Ethereum, Base, and now Circle’s Arc mainnet — same router logic, same non-custodial settlement, just a different chain config underneath.',
   },
 ]
 
@@ -90,7 +90,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
       {/* Hero */}
       <div className="l-hero">
         <div>
-          <div className="hero-eyebrow">EVM Recovery Intelligence · Ethereum + Base</div>
+          <div className="hero-eyebrow">EVM Recovery Intelligence · Ethereum + Base + Arc</div>
           <h1 className="hero-h1">
             Tokens trapped<br />in contracts that<br />can&apos;t spend them.
           </h1>
@@ -109,7 +109,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
           <div className="hero-proof">
             <span>Ethereum mainnet</span>
             <span>Base mainnet</span>
-            <span>Alchemy + Etherscan API</span>
+            <span>Arc mainnet</span>
             <span>Non-custodial settlement router</span>
           </div>
         </div>
@@ -303,7 +303,7 @@ export default function Landing({ onOpenDashboard, onOpenLeaderboard }: LandingP
       {/* Footer */}
       <footer className="l-footer">
         <div className="l-footer-left">
-          <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
+          <div>Salvage v0.1 · Ethereum + Base + Arc · Alchemy + Etherscan API V2</div>
           <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '10px' }}>
             {/* GitHub */}
             <a href="https://github.com/2TheMoom/Salvage" target="_blank" rel="noopener noreferrer"

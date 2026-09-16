@@ -427,8 +427,8 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
               </div>
               <div className="scan-empty-sub">
                 {mode === 'victim'
-                  ? 'Salvage will scan your transfer history for tokens mistakenly sent to contract addresses — like the classic mistake of sending a token to its own contract — and check if they can be recovered.'
-                  : 'Enter any ERC-20 token contract on Ethereum or Base. Salvage will check for stranded tokens, rescue functions, and recovery paths.'}
+                  ? 'Salvage will scan your transfer history for tokens mistakenly sent to a token’s own contract, a DEX pool, or a router — and check if they can be recovered.'
+                  : 'Enter any ERC-20 token contract on Ethereum, Base, or Arc. Salvage will check for stranded tokens, rescue functions, and recovery paths.'}
               </div>
             </div>
           )}
@@ -439,7 +439,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
                 <div className="how-step">Step 01 · Scan</div>
                 <div className="how-title">Paste an address</div>
                 <div className="how-body">
-                  A contract or a wallet — Salvage checks for stranded tokens, rescue functions, and a real recovery path, on Ethereum or Base.
+                  A contract or a wallet — Salvage checks for stranded tokens, rescue functions, and a real recovery path, on Ethereum, Base, or Arc.
                 </div>
               </div>
               <div className="how-card">
@@ -720,7 +720,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
       {/* Footer */}
       <footer className="d-footer">
         <div className="d-footer-l">
-          Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2
+          Salvage v0.1 · Ethereum + Base + Arc · Alchemy + Etherscan API V2
         </div>
         <div className="d-footer-r">
           <a href="/terms">Terms</a>

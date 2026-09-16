@@ -48,11 +48,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Which wallet ownership patterns does the owner panel detect?',
-    a: 'Standard Ownable-style contracts today, where a single owner() address is checked against your connected wallet. Role-based AccessControl ownership isn’t detected yet, so the owner panel simply won’t appear for those rather than guess wrong.',
+    a: 'Standard Ownable-style contracts, where a single owner() address is checked against your connected wallet, and role-based AccessControl contracts — the scanner reads every role-constant getter it can find (DEFAULT_ADMIN_ROLE first) and checks each one live via hasRole() against your connected wallet.',
   },
   {
     q: 'Which chains are supported?',
-    a: 'Ethereum and Base today, with Circle’s Arc mainnet planned shortly after it launches — same router logic, just a new chain config.',
+    a: 'Ethereum, Base, and now Circle’s Arc mainnet — same router logic, same non-custodial settlement, just a different chain config underneath.',
   },
 ]
 
@@ -201,7 +201,7 @@ export default function DocsPage() {
           <section className="legal-section" id="scanner" style={{ scrollMarginTop: '80px' }}>
             <h2>Contract Scanner</h2>
             <p>
-              Paste any ERC-20 contract on Ethereum or Base. Salvage sweeps every token balance
+              Paste any ERC-20 contract on Ethereum, Base, or Arc. Salvage sweeps every token balance
               the contract holds, prices holdings via Alchemy&apos;s Prices API, and runs
               recovery triage: is the contract verified, does its ABI expose a rescue function,
               is it an upgradeable proxy, and is there an owner who can act? The verdict —
@@ -314,8 +314,11 @@ export default function DocsPage() {
               <li><strong>Residual-safe</strong> — settle() can run again if more tokens arrive later.</li>
             </ul>
             <p>
-              All active contracts are verified on Etherscan/Basescan, Blockscout, and Sourcify.
-              The application layer gets the same scrutiny: row-level security denies writes from
+              Ethereum and Base contracts are verified on Etherscan/Basescan, Blockscout, and Sourcify.
+              Arc&apos;s contracts aren&apos;t source-verified anywhere yet — no confirmed
+              Blockscout-compatible explorer API exists for Arc mainnet at launch — so their
+              correctness is instead independently confirmed by direct RPC reads against the
+              deployed bytecode. The application layer gets the same scrutiny: row-level security denies writes from
               the public database key by default, and scan endpoints are rate-limited to stop
               scripted abuse from running up API costs.
             </p>
@@ -330,6 +333,7 @@ export default function DocsPage() {
                     <Th>Contract</Th>
                     <Th>Ethereum</Th>
                     <Th>Base</Th>
+                    <Th>Arc</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -341,6 +345,9 @@ export default function DocsPage() {
                     <Td>
                       <a className="docs-chip" href="https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code" target="_blank" rel="noopener noreferrer">0x2240…aEdf ↗</a>
                     </Td>
+                    <Td>
+                      <a className="docs-chip" href="https://explorer.arc.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27" target="_blank" rel="noopener noreferrer">0xd21c…Ed27 ↗</a>
+                    </Td>
                   </tr>
                   <tr>
                     <Td>SalvageBatchWrapper</Td>
@@ -349,6 +356,9 @@ export default function DocsPage() {
                     </Td>
                     <Td>
                       <a className="docs-chip" href="https://basescan.org/address/0xAe2A4E0f19300eBAA8D9408210F941A771103690#code" target="_blank" rel="noopener noreferrer">0xAe2A…3690 ↗</a>
+                    </Td>
+                    <Td>
+                      <a className="docs-chip" href="https://explorer.arc.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25" target="_blank" rel="noopener noreferrer">0xD9A5…AC25 ↗</a>
                     </Td>
                   </tr>
                 </tbody>
@@ -391,7 +401,7 @@ export default function DocsPage() {
 
       <footer className="l-footer">
         <div className="l-footer-left">
-          <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
+          <div>Salvage v0.1 · Ethereum + Base + Arc · Alchemy + Etherscan API V2</div>
         </div>
         <div className="l-footer-right">
           <Link href="/docs">Docs</Link>

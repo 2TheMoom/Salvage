@@ -149,7 +149,7 @@ export default function TermsPage() {
 
       <footer className="l-footer">
         <div className="l-footer-left">
-          <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
+          <div>Salvage v0.1 · Ethereum + Base + Arc · Alchemy + Etherscan API V2</div>
         </div>
         <div className="l-footer-right">
           <Link href="/terms">Terms</Link>

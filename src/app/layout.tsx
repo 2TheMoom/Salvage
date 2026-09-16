@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://usesalvage.xyz'),
   title: 'Salvage — Find and recover tokens stranded in smart contracts',
   description:
-    'Scan any contract or your own wallet for stranded ERC-20 tokens, then recover them fully on-chain. Non-custodial settlement. Live on Ethereum and Base.',
-  keywords: ['EVM', 'stranded tokens', 'ERC-20', 'recovery', 'Ethereum', 'Base', 'DeFi', 'smart contract recovery', 'non-custodial'],
+    'Scan any contract or your own wallet for stranded ERC-20 tokens, then recover them fully on-chain. Non-custodial settlement. Live on Ethereum, Base, and Arc.',
+  keywords: ['EVM', 'stranded tokens', 'ERC-20', 'recovery', 'Ethereum', 'Base', 'Arc', 'DeFi', 'smart contract recovery', 'non-custodial'],
   applicationName: 'Salvage',
   appleWebApp: {
     title: 'Salvage',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Salvage — Recover tokens stranded in smart contracts',
     description:
-      'Scan, triage, and recover stranded tokens on-chain. Non-custodial settlement with per-claim deposit addresses. Live on Ethereum and Base.',
+      'Scan, triage, and recover stranded tokens on-chain. Non-custodial settlement with per-claim deposit addresses. Live on Ethereum, Base, and Arc.',
     url: 'https://usesalvage.xyz',
     siteName: 'Salvage',
     type: 'website',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Salvage — Recover tokens stranded in smart contracts',
     description:
-      'Scan, triage, and recover stranded tokens on-chain. Non-custodial. Live on Ethereum and Base.',
+      'Scan, triage, and recover stranded tokens on-chain. Non-custodial. Live on Ethereum, Base, and Arc.',
     creator: '@Salvage_xyz',
     site: '@Salvage_xyz',
     images: ['/og-image.png'],

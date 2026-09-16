@@ -56,8 +56,8 @@ export default function PrivacyPage() {
                 signature, the relevant token address and transaction hash, and the USD value at
                 time of scan in our database (Supabase). This is what powers first-finder-wins
                 priority and claim/settlement tracking, and it mirrors information that is (or
-                becomes, once a claim is registered on-chain) publicly visible on Ethereum or Base
-                anyway.
+                becomes, once a claim is registered on-chain) publicly visible on Ethereum, Base,
+                or Arc anyway.
               </li>
               <li>
                 <strong>Mini App notification opt-in.</strong> If you open Salvage inside the Base
@@ -128,7 +128,7 @@ export default function PrivacyPage() {
             <h2>On-chain data is permanent</h2>
             <p>
               Once a recovery claim is registered or settled on-chain, that transaction is part of
-              the public, permanent record of Ethereum or Base — it cannot be edited or deleted by
+              the public, permanent record of Ethereum, Base, or Arc — it cannot be edited or deleted by
               us or by you. Anything we store off-chain (Supabase records backing the finds/claims
               registry) exists to support that on-chain process and the leaderboard; it is not
               sold, and it is not used for anything beyond operating Salvage.
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
 
       <footer className="l-footer">
         <div className="l-footer-left">
-          <div>Salvage v0.1 · Ethereum + Base · Alchemy + Etherscan API V2</div>
+          <div>Salvage v0.1 · Ethereum + Base + Arc · Alchemy + Etherscan API V2</div>
         </div>
         <div className="l-footer-right">
           <Link href="/terms">Terms</Link>
