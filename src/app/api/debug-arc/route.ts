@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchAbi, fetchOnchainIdentity, fetchProxyImplementation } from '@/lib/scanner'
+import { fetchAbi, fetchOnchainIdentity, fetchProxyImplementation, isContract, scanContract } from '@/lib/scanner'
 import { probeUniswapV2Pool } from '@/lib/pool'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +40,28 @@ export async function GET() {
     out.fetchAbiAfterPromiseAll = await fetchAbi(address.toLowerCase(), 'arc')
   } catch (e) {
     out.fetchAbiAfterPromiseAllThrew = e instanceof Error ? e.message : String(e)
+  }
+
+  // Full replication: isContract() first (exactly as scanContract does),
+  // then the same Promise.all, then fetchAbi.
+  try {
+    await isContract(address.toLowerCase(), 'arc')
+    await Promise.all([
+      fetchOnchainIdentity(address.toLowerCase(), 'arc'),
+      fetchProxyImplementation(address.toLowerCase(), 'arc'),
+      probeUniswapV2Pool(address.toLowerCase(), 'arc'),
+    ])
+    out.fetchAbiFullReplicated = await fetchAbi(address.toLowerCase(), 'arc')
+  } catch (e) {
+    out.fetchAbiFullReplicatedThrew = e instanceof Error ? e.message : String(e)
+  }
+
+  // The real function itself, called directly (not through /api/scan).
+  try {
+    const real = await scanContract(address, 'arc')
+    out.scanContractDirect = { isVerified: real.isVerified, tokenName: real.tokenName }
+  } catch (e) {
+    out.scanContractDirectThrew = e instanceof Error ? e.message : String(e)
   }
 
   try {
