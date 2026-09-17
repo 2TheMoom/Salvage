@@ -197,6 +197,7 @@ async function etherscanFetch(
       const isRateLimited =
         /rate limit/i.test(resultStr) || /rate limit/i.test(String(data.message || ''))
 
+      if (chain === 'arc') console.log('[etherscanFetch:debug]', JSON.stringify({ status: res.status, keyTail: (process.env.ETHERSCAN_API_KEY || '').slice(-4), data }))
       if (!isRateLimited) return data
     } catch { /* network hiccup — retry */ }
 
