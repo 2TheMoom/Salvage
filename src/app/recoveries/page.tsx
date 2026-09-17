@@ -147,7 +147,7 @@ export default function RecoveriesPage() {
 
 function RecoveryRow({ claim, index }: { claim: Claim; index: number }) {
   const payout = (claim.value_usd || 0) * (claim.finder_address ? VICTIM_BROKERED_RATE : VICTIM_SELF_RATE)
-  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
+  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'arc.etherscan.io'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>

@@ -314,11 +314,12 @@ export default function DocsPage() {
               <li><strong>Residual-safe</strong> — settle() can run again if more tokens arrive later.</li>
             </ul>
             <p>
-              Ethereum and Base contracts are verified on Etherscan/Basescan, Blockscout, and Sourcify.
-              Arc&apos;s contracts aren&apos;t source-verified anywhere yet — no confirmed
-              Blockscout-compatible explorer API exists for Arc mainnet at launch — so their
-              correctness is instead independently confirmed by direct RPC reads against the
-              deployed bytecode. The application layer gets the same scrutiny: row-level security denies writes from
+              All active contracts are verified on Etherscan/Basescan/Arc-Etherscan and Sourcify.
+              Blockscout verification isn&apos;t available on Arc &mdash; Circle&apos;s own native
+              explorer returned a 403 to the verification request, consistent with it not being a
+              Blockscout-compatible instance. Contract correctness on Arc is also independently
+              confirmed by direct RPC reads against the deployed bytecode, not just trusted from
+              the explorer. The application layer gets the same scrutiny: row-level security denies writes from
               the public database key by default, and scan endpoints are rate-limited to stop
               scripted abuse from running up API costs.
             </p>
@@ -346,7 +347,7 @@ export default function DocsPage() {
                       <a className="docs-chip" href="https://basescan.org/address/0x2240792d1A9D964d238bD693fCb09586B10faEdf#code" target="_blank" rel="noopener noreferrer">0x2240…aEdf ↗</a>
                     </Td>
                     <Td>
-                      <a className="docs-chip" href="https://explorer.arc.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27" target="_blank" rel="noopener noreferrer">0xd21c…Ed27 ↗</a>
+                      <a className="docs-chip" href="https://arc.etherscan.io/address/0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27" target="_blank" rel="noopener noreferrer">0xd21c…Ed27 ↗</a>
                     </Td>
                   </tr>
                   <tr>
@@ -358,7 +359,7 @@ export default function DocsPage() {
                       <a className="docs-chip" href="https://basescan.org/address/0xAe2A4E0f19300eBAA8D9408210F941A771103690#code" target="_blank" rel="noopener noreferrer">0xAe2A…3690 ↗</a>
                     </Td>
                     <Td>
-                      <a className="docs-chip" href="https://explorer.arc.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25" target="_blank" rel="noopener noreferrer">0xD9A5…AC25 ↗</a>
+                      <a className="docs-chip" href="https://arc.etherscan.io/address/0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25" target="_blank" rel="noopener noreferrer">0xD9A5…AC25 ↗</a>
                     </Td>
                   </tr>
                 </tbody>

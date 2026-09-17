@@ -616,7 +616,7 @@ export default function Dashboard({ onGoLanding, initialScan, scrollTarget, onSc
             ) : (
               <>
                 {activity.map((item, i) => {
-                  const explorer = item.chain === 'eth' ? 'etherscan.io' : item.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
+                  const explorer = item.chain === 'eth' ? 'etherscan.io' : item.chain === 'base' ? 'basescan.org' : 'arc.etherscan.io'
                   return (
                     <div key={i} className="lb-row" style={{ cursor: item.txHash ? 'pointer' : 'default' }}
                       onClick={() => { if (item.txHash) window.open(`https://${explorer}/tx/${item.txHash}`, '_blank') }}

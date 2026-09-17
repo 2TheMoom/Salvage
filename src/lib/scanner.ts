@@ -16,14 +16,11 @@ const RESCUE_SIGNATURES = [
 ]
 
 const ETHERSCAN_BASE = 'https://api.etherscan.io/v2/api'
-// Arc isn't in Etherscan's V2 chainlist — "Arcscan" (a third-party Blockscout
-// instance at testnet.arcscan.app) filled that gap for testnet. Circle's own
-// mainnet docs (docs.arc.io) reference only https://explorer.arc.io and never
-// mention Arcscan branding, and neither arcscan.app nor mainnet.arcscan.app
-// resolve — so there's no confirmed mainnet equivalent yet. Left unset
-// (rather than guessed) until a real mainnet Etherscan-legacy-shaped API is
-// confirmed; etherscanFetch() below fails closed to "not verified" for 'arc'.
-const ARCSCAN_BASE: string | null = null
+// Arc wasn't in Etherscan's V2 chainlist at mainnet launch (Sept 16) — it was
+// added within a day (confirmed live against api.etherscan.io/v2/chainlist,
+// which now lists chainid 5042 with apiurl api.etherscan.io/v2/api?chainid=5042
+// and block explorer arc.etherscan.io). Arc is a normal Etherscan V2 chain
+// now, same path as eth/base — no separate branch needed.
 const CHAIN_IDS: Record<Chain, number> = { eth: 1, base: 8453, arc: 5042 }
 
 // ── Proxy implementation storage slots
@@ -190,15 +187,7 @@ async function fetchProxyImplementation(
 async function etherscanFetch(
   chain: Chain, params: string, attempts = 4
 ): Promise<Record<string, unknown> | null> {
-  // Arc isn't on Etherscan's V2 chainlist (confirmed directly against
-  // api.etherscan.io/v2/chainlist), and ARCSCAN_BASE has no confirmed
-  // mainnet value yet (see comment above) — fail closed rather than guess
-  // an API URL for a security-relevant ABI-verification call.
-  if (chain === 'arc' && !ARCSCAN_BASE) return null
-
-  const url = chain === 'arc'
-    ? `${ARCSCAN_BASE}?${params}`
-    : `${ETHERSCAN_BASE}?chainid=${CHAIN_IDS[chain]}&${params}&apikey=${process.env.ETHERSCAN_API_KEY}`
+  const url = `${ETHERSCAN_BASE}?chainid=${CHAIN_IDS[chain]}&${params}&apikey=${process.env.ETHERSCAN_API_KEY}`
 
   for (let i = 0; i < attempts; i++) {
     try {

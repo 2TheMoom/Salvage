@@ -13,7 +13,7 @@ export const arc = defineChain({
     default: { http: ['https://rpc.mainnet.arc.io'] },
   },
   blockExplorers: {
-    default: { name: 'Arc Explorer', url: 'https://explorer.arc.io' },
+    default: { name: 'Arc Etherscan', url: 'https://arc.etherscan.io' },
   },
   testnet: false,
 })

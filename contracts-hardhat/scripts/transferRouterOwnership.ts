@@ -6,6 +6,7 @@ const NEW_OWNER = getAddress('0x542866504A1f38391fF5D22FAa41Ce80c5556Fec') // Sa
 const ROUTER_ADDRESS: Record<string, `0x${string}`> = {
   mainnet: '0xD9A5f1Fcf39F99152d6443132B21C1D8f7fAAC25',
   base:    '0x2240792d1A9D964d238bD693fCb09586B10faEdf',
+  arc:     '0xd21c72FBE27B6Cd26A5DBf49148B7bA0a4CAed27',
 }
 
 async function main() {

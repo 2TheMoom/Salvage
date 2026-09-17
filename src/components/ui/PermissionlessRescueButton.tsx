@@ -111,7 +111,7 @@ export default function PermissionlessRescueButton({ finding, receiver, chain, o
       </button>
       {sendTx && (
         <div style={{ marginTop: '6px' }}>
-          <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://explorer.arc.io'}/tx/${sendTx}`}
+          <a className="chip-link" href={`${chain === 'eth' ? 'https://etherscan.io' : chain === 'base' ? 'https://basescan.org' : 'https://arc.etherscan.io'}/tx/${sendTx}`}
              target="_blank" rel="noopener noreferrer">
             Rescue tx ↗
           </a>

@@ -13,6 +13,6 @@ export function truncateAddress(address: string, chars = 4): string {
 export function explorerUrl(address: string, chain: 'eth' | 'base' | 'arc'): string {
   const base = chain === 'eth' ? 'https://etherscan.io'
     : chain === 'base' ? 'https://basescan.org'
-    : 'https://explorer.arc.io'
+    : 'https://arc.etherscan.io'
   return `${base}/address/${address}`
 }

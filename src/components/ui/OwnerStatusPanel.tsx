@@ -294,7 +294,7 @@ function PendingClaimRow({ claim }: { claim: PendingClaim }) {
     } catch { /* clipboard unavailable */ }
   }
 
-  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'explorer.arc.io'
+  const explorer = claim.chain === 'eth' ? 'etherscan.io' : claim.chain === 'base' ? 'basescan.org' : 'arc.etherscan.io'
 
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
