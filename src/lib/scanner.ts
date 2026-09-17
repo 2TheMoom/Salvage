@@ -114,7 +114,7 @@ function decodeStringResult(hex: string | null): string | undefined {
 
 // Read name() and symbol() directly from the chain.
 // This is the source of truth — no Etherscan, no rate limits.
-async function fetchOnchainIdentity(
+export async function fetchOnchainIdentity(
   address: string, chain: Chain
 ): Promise<{ name?: string; symbol?: string }> {
   const rpcUrl = getRpcUrl(chain)
@@ -144,7 +144,7 @@ async function fetchOwnerAddress(address: string, chain: Chain): Promise<string 
 }
 
 // Detect proxy implementation via storage slots — deterministic, RPC-based.
-async function fetchProxyImplementation(
+export async function fetchProxyImplementation(
   address: string, chain: Chain
 ): Promise<{ implementation?: string; proxyType?: string }> {
   const rpcUrl = getRpcUrl(chain)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { fetchAbi } from '@/lib/scanner'
+import { fetchAbi, fetchOnchainIdentity, fetchProxyImplementation } from '@/lib/scanner'
+import { probeUniswapV2Pool } from '@/lib/pool'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -25,6 +26,20 @@ export async function GET() {
     out.fetchAbiIsolated = await fetchAbi(address.toLowerCase(), 'arc')
   } catch (e) {
     out.fetchAbiIsolatedThrew = e instanceof Error ? e.message : String(e)
+  }
+
+  // Now reproduce scanContract's exact preceding Promise.all, then call
+  // fetchAbi immediately after, to see if THAT combination reproduces the
+  // failure seen through the real /api/scan path.
+  try {
+    await Promise.all([
+      fetchOnchainIdentity(address.toLowerCase(), 'arc'),
+      fetchProxyImplementation(address.toLowerCase(), 'arc'),
+      probeUniswapV2Pool(address.toLowerCase(), 'arc'),
+    ])
+    out.fetchAbiAfterPromiseAll = await fetchAbi(address.toLowerCase(), 'arc')
+  } catch (e) {
+    out.fetchAbiAfterPromiseAllThrew = e instanceof Error ? e.message : String(e)
   }
 
   try {
