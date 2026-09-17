@@ -199,7 +199,9 @@ async function etherscanFetch(
 
       if (chain === 'arc') console.log('[etherscanFetch:debug]', JSON.stringify({ status: res.status, keyTail: (process.env.ETHERSCAN_API_KEY || '').slice(-4), data }))
       if (!isRateLimited) return data
-    } catch { /* network hiccup — retry */ }
+    } catch (err) {
+      if (chain === 'arc') console.log('[etherscanFetch:debug:caught]', err instanceof Error ? err.message : String(err))
+    }
 
     await sleep(400 * (i + 1)) // 400ms, 800ms, 1200ms backoff
   }
