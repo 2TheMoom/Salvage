@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { scanContract, fetchAbi } from '@/lib/scanner'
+import { scanContract } from '@/lib/scanner'
 import { sweepTokenBalances, calcTotals } from '@/lib/sweeper'
 import { isValidAddress } from '@/lib/utils'
 import { checkRateLimit } from '@/lib/ratelimit'
@@ -105,16 +105,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let debugArc: unknown = undefined
-    if (chain === 'arc') {
-      try {
-        debugArc = await fetchAbi(address.toLowerCase(), chain)
-      } catch (e) {
-        debugArc = { directCallThrew: e instanceof Error ? e.message : String(e) }
-      }
-    }
-
-    return NextResponse.json<ScanApiResponse & { debugArc?: unknown }>({ success: true, result, ...(debugArc !== undefined ? { debugArc } : {}) })
+    return NextResponse.json<ScanApiResponse>({ success: true, result })
   } catch (error) {
     console.error('[/api/scan] Error:', error)
     return NextResponse.json<ScanApiResponse>(

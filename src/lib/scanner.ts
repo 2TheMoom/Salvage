@@ -114,7 +114,7 @@ function decodeStringResult(hex: string | null): string | undefined {
 
 // Read name() and symbol() directly from the chain.
 // This is the source of truth — no Etherscan, no rate limits.
-export async function fetchOnchainIdentity(
+async function fetchOnchainIdentity(
   address: string, chain: Chain
 ): Promise<{ name?: string; symbol?: string }> {
   const rpcUrl = getRpcUrl(chain)
@@ -144,7 +144,7 @@ async function fetchOwnerAddress(address: string, chain: Chain): Promise<string 
 }
 
 // Detect proxy implementation via storage slots — deterministic, RPC-based.
-export async function fetchProxyImplementation(
+async function fetchProxyImplementation(
   address: string, chain: Chain
 ): Promise<{ implementation?: string; proxyType?: string }> {
   const rpcUrl = getRpcUrl(chain)
@@ -197,11 +197,8 @@ async function etherscanFetch(
       const isRateLimited =
         /rate limit/i.test(resultStr) || /rate limit/i.test(String(data.message || ''))
 
-      if (chain === 'arc') console.log('[etherscanFetch:debug]', JSON.stringify({ status: res.status, keyTail: (process.env.ETHERSCAN_API_KEY || '').slice(-4), data }))
       if (!isRateLimited) return data
-    } catch (err) {
-      if (chain === 'arc') console.log('[etherscanFetch:debug:caught]', err instanceof Error ? err.message : String(err))
-    }
+    } catch { /* network hiccup — retry */ }
 
     await sleep(400 * (i + 1)) // 400ms, 800ms, 1200ms backoff
   }
