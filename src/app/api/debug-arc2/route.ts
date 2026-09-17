@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { scanContract } from '@/lib/scanner'
+import { scanContract, fetchAbi } from '@/lib/scanner'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
