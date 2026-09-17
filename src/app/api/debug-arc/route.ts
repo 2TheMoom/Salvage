@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { fetchAbi } from '@/lib/scanner'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -15,6 +16,15 @@ export async function GET() {
     keyPresent: Boolean(key),
     keyLength: key.length,
     keyTail: key.slice(-4),
+  }
+
+  // Test the real fetchAbi function called FIRST, as the very first thing
+  // this invocation does — mirrors scanContract's position relative to a
+  // cold start, without the preceding Promise.all of RPC calls.
+  try {
+    out.fetchAbiIsolated = await fetchAbi(address.toLowerCase(), 'arc')
+  } catch (e) {
+    out.fetchAbiIsolatedThrew = e instanceof Error ? e.message : String(e)
   }
 
   try {
