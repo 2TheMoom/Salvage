@@ -26,3 +26,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# packaged extension builds — regenerated for each Chrome Web Store submission
+chrome-extension/*.zip
