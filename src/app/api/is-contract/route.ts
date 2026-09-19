@@ -49,7 +49,11 @@ export async function GET(req: NextRequest) {
     const arc  = await isContract(address, 'arc')
 
     return NextResponse.json(
-      { success: true, address, eth, base, arc },
+      {
+        success: true, address, eth, base, arc,
+        debugArcRpcUrlDefined: Boolean(process.env.ALCHEMY_ARC_RPC),
+        debugArcRpcUrlTail: (process.env.ALCHEMY_ARC_RPC || '').slice(-6),
+      },
       { headers: corsHeaders }
     )
   } catch (err) {
