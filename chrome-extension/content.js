@@ -1,6 +1,6 @@
 // Watches every text input/textarea on the page for a pasted or typed EVM
-// address, asks the background worker whether it's a contract on Ethereum
-// or Base, and — if so — shows a non-blocking warning next to the field.
+// address, asks the background worker whether it's a contract on Ethereum,
+// Base, or Arc, and — if so — shows a non-blocking warning next to the field.
 // Purely additive: never reads form values beyond extracting the address
 // pattern, never touches the page's own JS, never blocks submission.
 
@@ -51,7 +51,7 @@ function runCheck(el) {
     if (!result?.success) return;
     if (el.value !== value) return; // field changed while we were waiting
 
-    if (result.eth || result.base) {
+    if (result.eth || result.base || result.arc) {
       showWarning(el, result);
     } else if (activeWarning?.target === el) {
       dismissWarning();
@@ -72,7 +72,10 @@ function showWarning(el, result) {
   host.style.cssText = 'position:fixed;z-index:2147483647;';
   const shadow = host.attachShadow({ mode: 'closed' });
 
-  const chains = [result.eth && 'Ethereum', result.base && 'Base'].filter(Boolean).join(' and ');
+  const chainList = [result.eth && 'Ethereum', result.base && 'Base', result.arc && 'Arc'].filter(Boolean);
+  const chains = chainList.length > 1
+    ? `${chainList.slice(0, -1).join(', ')}${chainList.length > 2 ? ',' : ''} and ${chainList[chainList.length - 1]}`
+    : chainList[0];
 
   shadow.innerHTML = `
     <style>

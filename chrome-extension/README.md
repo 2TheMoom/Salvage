@@ -1,19 +1,19 @@
 # Salvage — Stranded Token Warning (Chrome extension)
 
 Watches text inputs on any page for a pasted or typed EVM address. If the
-address has contract code on Ethereum or Base, it shows a small warning next
-to the field — sending ERC-20 tokens to a contract instead of a wallet is the
-single most common way tokens get permanently stranded, which is exactly what
-Salvage (usesalvage.xyz) exists to recover from. This catches it before it
-happens.
+address has contract code on Ethereum, Base, or Arc, it shows a small warning
+next to the field — sending ERC-20 tokens to a contract instead of a wallet is
+the single most common way tokens get permanently stranded, which is exactly
+what Salvage (usesalvage.xyz) exists to recover from. This catches it before
+it happens.
 
 ## How it works
 
 - `content.js` runs on every page, watches `input`/`paste` events on text
   fields, and extracts a `0x`-prefixed 40-hex-char address once one appears.
 - It asks `background.js` (the service worker) whether that address is a
-  contract on Ethereum or Base, via `/api/is-contract` on the main Salvage
-  API — the same Alchemy-backed check the scanner itself uses.
+  contract on Ethereum, Base, or Arc, via `/api/is-contract` on the main
+  Salvage API — the same Alchemy-backed check the scanner itself uses.
 - If either chain reports contract code, a small warning bubble appears
   under the field (rendered in a closed Shadow DOM so it can't be styled
   away by the host page, and never touches the page's own JS or blocks

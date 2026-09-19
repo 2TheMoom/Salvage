@@ -485,7 +485,6 @@ export async function scanContract(address: string, chain: Chain): Promise<ScanR
   // ── Step 2: Etherscan calls — strictly SERIALIZED with spacing to
   //    stay inside the free-tier rate limit. Never fire these in parallel.
   const { abi: proxyAbi, isVerified } = await fetchAbi(normalizedAddress, chain)
-  if (chain === 'arc') throw new Error('DEBUG_FETCHABI_RESULT: ' + JSON.stringify({ normalizedAddress, chain, isVerified, abiLength: proxyAbi?.length }))
   await sleep(250)
 
   let implAbi: string | null = null

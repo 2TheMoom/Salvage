@@ -27,11 +27,11 @@ function check(address) {
       setResult('Could not reach Salvage — try again.', 'muted');
       return;
     }
-    if (res.eth || res.base) {
-      const chains = [res.eth && 'Ethereum', res.base && 'Base'].filter(Boolean).join(' + ');
+    if (res.eth || res.base || res.arc) {
+      const chains = [res.eth && 'Ethereum', res.base && 'Base', res.arc && 'Arc'].filter(Boolean).join(' + ');
       setResult(`⚠️ Contract address (${chains}). Sending ERC-20 tokens here may strand them.`, 'warn');
     } else {
-      setResult('✓ No contract code found on Ethereum or Base — looks like a regular wallet.', 'safe');
+      setResult('✓ No contract code found on Ethereum, Base, or Arc — looks like a regular wallet.', 'safe');
     }
   });
 }

@@ -38,13 +38,14 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const [eth, base] = await Promise.all([
+    const [eth, base, arc] = await Promise.all([
       isContract(address, 'eth'),
       isContract(address, 'base'),
+      isContract(address, 'arc'),
     ])
 
     return NextResponse.json(
-      { success: true, address, eth, base },
+      { success: true, address, eth, base, arc },
       { headers: corsHeaders }
     )
   } catch (err) {
