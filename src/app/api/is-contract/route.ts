@@ -52,7 +52,10 @@ export async function GET(req: NextRequest) {
       {
         success: true, address, eth, base, arc,
         debugArcRpcUrlDefined: Boolean(process.env.ALCHEMY_ARC_RPC),
-        debugArcRpcUrlTail: (process.env.ALCHEMY_ARC_RPC || '').slice(-6),
+        debugEthRpcUrlDefined: Boolean(process.env.ALCHEMY_ETH_RPC),
+        debugBaseRpcUrlDefined: Boolean(process.env.ALCHEMY_BASE_RPC),
+        debugAllEnvKeysWithArc: Object.keys(process.env).filter((k) => k.toUpperCase().includes('ARC')),
+        debugAllEnvKeysWithAlchemy: Object.keys(process.env).filter((k) => k.toUpperCase().includes('ALCHEMY')),
       },
       { headers: corsHeaders }
     )
