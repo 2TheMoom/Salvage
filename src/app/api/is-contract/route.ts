@@ -38,25 +38,14 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Serialized, not Promise.all — concurrent RPC calls to Alchemy's Arc
-    // endpoint specifically were observed returning a false "not a contract"
-    // from Vercel's network path (confirmed deterministic in production,
-    // not reproducible locally), even though the exact same call made alone
-    // succeeds reliably. Serializing costs a little latency but removes
-    // whatever contention causes that.
-    const eth  = await isContract(address, 'eth')
-    const base = await isContract(address, 'base')
-    const arc  = await isContract(address, 'arc')
+    const [eth, base, arc] = await Promise.all([
+      isContract(address, 'eth'),
+      isContract(address, 'base'),
+      isContract(address, 'arc'),
+    ])
 
     return NextResponse.json(
-      {
-        success: true, address, eth, base, arc,
-        debugArcRpcUrlDefined: Boolean(process.env.ALCHEMY_ARC_RPC),
-        debugEthRpcUrlDefined: Boolean(process.env.ALCHEMY_ETH_RPC),
-        debugBaseRpcUrlDefined: Boolean(process.env.ALCHEMY_BASE_RPC),
-        debugAllEnvKeysWithArc: Object.keys(process.env).filter((k) => k.toUpperCase().includes('ARC')),
-        debugAllEnvKeysWithAlchemy: Object.keys(process.env).filter((k) => k.toUpperCase().includes('ALCHEMY')),
-      },
+      { success: true, address, eth, base, arc },
       { headers: corsHeaders }
     )
   } catch (err) {

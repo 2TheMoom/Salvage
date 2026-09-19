@@ -1,5 +1,7 @@
+import { mainnet, base } from 'viem/chains'
 import { Chain, TriageCheck, TriageStatus, ScanResult, RescueAbiEntry, PermissionlessRescue } from '@/types'
 import { probeUniswapV2Pool } from './pool'
+import { arc } from './chains'
 
 // Never read from the target's own ABI — always this fixed, known-safe
 // shape, matching pool.ts's own comment on why name-matching alone isn't
@@ -37,10 +39,15 @@ const SEL_NAME   = '0x06fdde03' // name()
 const SEL_SYMBOL = '0x95d89b41' // symbol()
 const SEL_OWNER  = '0x8da5cb5b' // owner()
 
+// Falls back to each chain's own public RPC when the Alchemy-specific env
+// var is unavailable, mirroring viem's own http() transport behavior
+// elsewhere in this codebase (contracts.ts's getServerPublicClient) rather
+// than silently returning undefined — a missing/misconfigured Alchemy URL
+// should degrade to a slower but working RPC, not a false "not a contract".
 function getRpcUrl(chain: Chain): string {
-  if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC!
-  if (chain === 'base') return process.env.ALCHEMY_BASE_RPC!
-  if (chain === 'arc')  return process.env.ALCHEMY_ARC_RPC!
+  if (chain === 'eth')  return process.env.ALCHEMY_ETH_RPC  || mainnet.rpcUrls.default.http[0]
+  if (chain === 'base') return process.env.ALCHEMY_BASE_RPC || base.rpcUrls.default.http[0]
+  if (chain === 'arc')  return process.env.ALCHEMY_ARC_RPC  || arc.rpcUrls.default.http[0]
   throw new Error(`Unknown chain: ${chain}`)
 }
 
