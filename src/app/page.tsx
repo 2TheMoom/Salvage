@@ -16,7 +16,7 @@ function parseInitialScan(): { chain: Chain; address: string } | null {
   if (!raw) return null
   const [chainStr, address] = raw.split(':')
   if (
-    (chainStr === 'eth' || chainStr === 'base') &&
+    (chainStr === 'eth' || chainStr === 'base' || chainStr === 'arc') &&
     address && /^0x[a-fA-F0-9]{40}$/.test(address)
   ) {
     return { chain: chainStr, address }
